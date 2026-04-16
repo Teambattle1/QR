@@ -3,8 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Generator - GAMES</title>
+    <title>QR by TeamBattle</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <script>
+        // Skip intro if arriving via activity scan (?a=... in URL)
+        if (/[?&]a=/.test(window.location.search)) {
+            document.documentElement.classList.add('skip-intro');
+        }
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
@@ -18,6 +24,69 @@
             padding: 70px 20px 40px;
         }
 
+        /* ============ INTRO ANIMATION ============ */
+        .intro-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            animation: intro-fadeout 0.5s ease 3.5s forwards;
+        }
+        @keyframes intro-fadeout {
+            to { opacity: 0; pointer-events: none; }
+        }
+        .intro-logo {
+            font-size: 96px;
+            font-weight: bold;
+            letter-spacing: 12px;
+            text-transform: uppercase;
+            opacity: 0;
+            animation: intro-zoom 1.4s ease 0.2s forwards;
+        }
+        .intro-logo .w { color: #fff; }
+        .intro-logo .o { color: #ff6600; }
+        @keyframes intro-zoom {
+            0% { opacity: 0; transform: scale(0.3); filter: blur(20px); }
+            60% { opacity: 1; transform: scale(1.05); filter: blur(0); }
+            100% { opacity: 1; transform: scale(1); filter: blur(0); }
+        }
+        .intro-sub {
+            color: #666;
+            font-size: 18px;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            margin-top: 18px;
+            opacity: 0;
+            animation: intro-slide 0.9s ease 1.5s forwards;
+        }
+        .intro-sub .by { color: rgba(255, 255, 255, 0.45); }
+        .intro-sub .w { color: #fff; font-weight: bold; }
+        .intro-sub .o { color: #ff6600; font-weight: bold; }
+        @keyframes intro-slide {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .intro-line {
+            width: 0;
+            height: 2px;
+            background: #ff6600;
+            margin-top: 25px;
+            animation: intro-line-grow 1s ease 2.3s forwards;
+        }
+        @keyframes intro-line-grow {
+            to { width: 220px; box-shadow: 0 0 15px rgba(255, 102, 0, 0.6); }
+        }
+        .main-content { opacity: 0; animation: content-in 0.6s ease 3.8s forwards; }
+        @keyframes content-in { to { opacity: 1; } }
+
+        html.skip-intro .intro-overlay { display: none !important; }
+        html.skip-intro .main-content { opacity: 1 !important; animation: none !important; }
+
+        /* ============ LAYOUT ============ */
         .back-link {
             position: fixed;
             top: 20px;
@@ -87,7 +156,7 @@
         .panel { display: none; max-width: 900px; margin: 0 auto; }
         .panel.active { display: block; }
 
-        /* Generator panel */
+        /* ============ GENERATOR ============ */
         .gen-wrap {
             display: grid;
             grid-template-columns: 1fr 320px;
@@ -104,6 +173,37 @@
             border-radius: 12px;
             padding: 22px;
         }
+
+        .type-toggle {
+            display: flex;
+            gap: 0;
+            margin-bottom: 18px;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 25px;
+            padding: 4px;
+        }
+        .type-toggle button {
+            flex: 1;
+            padding: 8px 16px;
+            background: transparent;
+            border: none;
+            color: rgba(255,255,255,0.5);
+            font-size: 12px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            border-radius: 20px;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+        .type-toggle button.active {
+            background: rgba(0, 212, 255, 0.15);
+            color: #00d4ff;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.2);
+        }
+
         .field { margin-bottom: 16px; }
         .field label {
             display: block;
@@ -113,6 +213,7 @@
             color: rgba(255,255,255,0.5);
             margin-bottom: 6px;
         }
+        .field label .muted { color: rgba(255,255,255,0.25); font-size: 10px; }
         .field input[type="text"],
         .field textarea,
         .field select {
@@ -126,7 +227,7 @@
             font-family: inherit;
             transition: border-color 0.2s ease;
         }
-        .field textarea { min-height: 80px; resize: vertical; }
+        .field textarea { min-height: 70px; resize: vertical; }
         .field input:focus, .field textarea:focus, .field select:focus {
             outline: none;
             border-color: rgba(0, 212, 255, 0.6);
@@ -141,6 +242,20 @@
             border-radius: 6px;
             cursor: pointer;
         }
+
+        /* Show/hide fields per mode */
+        .form[data-mode="simple"] .only-activity { display: none; }
+        .form[data-mode="activity"] .only-simple { display: none; }
+
+        .info-hint {
+            font-size: 10px;
+            color: rgba(255,255,255,0.35);
+            letter-spacing: 1px;
+            margin-top: -10px;
+            margin-bottom: 14px;
+            line-height: 1.5;
+        }
+        .info-hint strong { color: rgba(0, 212, 255, 0.7); }
 
         .btn {
             display: inline-block;
@@ -209,7 +324,7 @@
         .preview-label {
             margin-top: 14px;
             font-size: 11px;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
             text-transform: uppercase;
             color: rgba(255,255,255,0.4);
             word-break: break-all;
@@ -217,10 +332,10 @@
             overflow: hidden;
         }
 
-        /* Saved gallery */
+        /* ============ ARCHIVE ============ */
         .gallery {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
             gap: 16px;
         }
         .card {
@@ -229,10 +344,34 @@
             border-radius: 10px;
             padding: 14px;
             transition: all 0.25s ease;
+            position: relative;
         }
         .card:hover {
             border-color: rgba(0, 212, 255, 0.4);
             box-shadow: 0 0 15px rgba(0, 212, 255, 0.15);
+        }
+        .card.is-activity {
+            border-color: rgba(255, 102, 0, 0.25);
+            background: linear-gradient(180deg, rgba(255,102,0,0.04) 0%, rgba(255,255,255,0.03) 100%);
+        }
+        .card.is-activity:hover {
+            border-color: rgba(255, 102, 0, 0.6);
+            box-shadow: 0 0 15px rgba(255, 102, 0, 0.2);
+        }
+        .card-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 3px 8px;
+            background: rgba(255, 102, 0, 0.2);
+            border: 1px solid rgba(255, 102, 0, 0.5);
+            color: #ff9955;
+            font-size: 9px;
+            font-weight: bold;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            border-radius: 10px;
+            z-index: 2;
         }
         .card-qr {
             background: #fff;
@@ -262,6 +401,26 @@
             overflow: hidden;
             margin-bottom: 8px;
         }
+        .card-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 8px;
+            margin-bottom: 8px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 102, 0, 0.2);
+            border-radius: 6px;
+            font-size: 10px;
+        }
+        .card-stats .scans {
+            color: #ff9955;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        .card-stats .last {
+            color: rgba(255,255,255,0.4);
+            letter-spacing: 0.5px;
+        }
         .card-actions { display: flex; gap: 6px; flex-wrap: wrap; }
         .icon-btn {
             padding: 6px 10px;
@@ -277,7 +436,7 @@
             font-family: inherit;
             transition: all 0.2s ease;
             flex: 1;
-            min-width: 40px;
+            min-width: 38px;
         }
         .icon-btn:hover {
             color: #00d4ff;
@@ -295,7 +454,6 @@
             font-size: 14px;
             letter-spacing: 2px;
         }
-
         .toolbar {
             display: flex;
             justify-content: space-between;
@@ -311,7 +469,7 @@
             color: rgba(255,255,255,0.4);
         }
 
-        /* Scanner */
+        /* ============ SCANNER ============ */
         #scanner-box {
             max-width: 500px;
             margin: 0 auto;
@@ -333,6 +491,10 @@
             display: none;
         }
         .scan-result.show { display: block; }
+        .scan-result.activity {
+            background: rgba(255, 102, 0, 0.1);
+            border-color: rgba(255, 102, 0, 0.4);
+        }
         .scan-result a { color: #00d4ff; text-decoration: none; }
         .scan-result a:hover { text-decoration: underline; }
         .scan-label {
@@ -350,6 +512,82 @@
             flex-wrap: wrap;
         }
 
+        /* ============ ACTIVITY HIT OVERLAY ============ */
+        .activity-hit {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.96);
+            z-index: 10000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .activity-hit.show { display: flex; animation: fade-in 0.4s ease; }
+        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+        .activity-hit-box {
+            max-width: 480px;
+            width: 100%;
+            background: linear-gradient(180deg, rgba(255,102,0,0.08), rgba(0,0,0,0.6));
+            border: 1px solid rgba(255, 102, 0, 0.4);
+            border-radius: 16px;
+            padding: 32px 28px;
+            text-align: center;
+            box-shadow: 0 0 40px rgba(255, 102, 0, 0.25);
+        }
+        .activity-hit-badge {
+            display: inline-block;
+            padding: 5px 14px;
+            background: rgba(255, 102, 0, 0.2);
+            color: #ff9955;
+            font-size: 10px;
+            font-weight: bold;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            border-radius: 12px;
+            margin-bottom: 18px;
+        }
+        .activity-hit-name {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+        .activity-hit-desc {
+            color: rgba(255,255,255,0.6);
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+        .activity-hit-target {
+            margin: 20px 0;
+        }
+        .activity-hit-target .target-text {
+            padding: 14px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            font-size: 14px;
+            word-break: break-word;
+            text-align: left;
+        }
+        .activity-hit-stats {
+            font-size: 11px;
+            color: rgba(255,255,255,0.45);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin: 16px 0;
+        }
+        .activity-hit-stats .num { color: #ff9955; font-weight: bold; font-size: 14px; }
+        .activity-hit-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        /* ============ TOAST ============ */
         .toast {
             position: fixed;
             bottom: 30px;
@@ -365,7 +603,7 @@
             letter-spacing: 2px;
             text-transform: uppercase;
             transition: transform 0.3s ease;
-            z-index: 100;
+            z-index: 10001;
             box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
         }
         .toast.show { transform: translateX(-50%) translateY(0); }
@@ -374,106 +612,154 @@
             .title { font-size: 26px; letter-spacing: 2px; }
             body { padding: 60px 14px 30px; }
             .tab { padding: 8px 16px; font-size: 11px; }
+            .intro-logo { font-size: 70px; letter-spacing: 8px; }
+            .intro-sub { font-size: 14px; letter-spacing: 4px; }
+            .activity-hit-name { font-size: 22px; }
         }
     </style>
 </head>
 <body>
-    <a href="index.html" class="back-link">&larr; BACK</a>
-
-    <h1 class="title"><span>QR</span> <span class="accent">GENERATOR</span></h1>
-    <div class="subtitle">Create · Save · Scan</div>
-
-    <div class="tabs">
-        <button class="tab active" data-tab="generator">Generator</button>
-        <button class="tab" data-tab="saved">Saved <span id="saved-badge" style="opacity:0.6"></span></button>
-        <button class="tab" data-tab="scanner">Scanner</button>
+    <!-- Intro Animation -->
+    <div class="intro-overlay">
+        <div class="intro-logo"><span class="w">Q</span><span class="o">R</span></div>
+        <div class="intro-sub"><span class="by">by </span><span class="w">TEAM</span><span class="o">BATTLE</span></div>
+        <div class="intro-line"></div>
     </div>
 
-    <!-- GENERATOR -->
-    <div class="panel active" id="panel-generator">
-        <div class="gen-wrap">
-            <div class="form">
-                <div class="field">
-                    <label for="qr-name">Navn (til arkiv)</label>
-                    <input type="text" id="qr-name" placeholder="f.eks. 'Zone 1 Start'">
-                </div>
-                <div class="field">
-                    <label for="qr-data">Indhold (tekst / URL)</label>
-                    <textarea id="qr-data" placeholder="https://eksempel.dk eller fri tekst"></textarea>
-                </div>
-                <div class="row-2">
-                    <div class="field">
-                        <label for="qr-size">Størrelse</label>
-                        <select id="qr-size">
-                            <option value="200">200 px</option>
-                            <option value="300" selected>300 px</option>
-                            <option value="500">500 px</option>
-                            <option value="800">800 px</option>
-                        </select>
-                    </div>
-                    <div class="field">
-                        <label for="qr-ecl">Fejlkorrigering</label>
-                        <select id="qr-ecl">
-                            <option value="L">L (7%)</option>
-                            <option value="M" selected>M (15%)</option>
-                            <option value="Q">Q (25%)</option>
-                            <option value="H">H (30%)</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="row-2">
-                    <div class="field">
-                        <label for="qr-fg">Farve (forgrund)</label>
-                        <input type="color" id="qr-fg" value="#000000">
-                    </div>
-                    <div class="field">
-                        <label for="qr-bg">Farve (baggrund)</label>
-                        <input type="color" id="qr-bg" value="#ffffff">
-                    </div>
-                </div>
-                <div class="btn-row">
-                    <button class="btn primary" id="btn-generate">Generer</button>
-                    <button class="btn" id="btn-save">Gem i arkiv</button>
-                    <button class="btn" id="btn-download">Download PNG</button>
-                </div>
-            </div>
-
-            <div class="preview">
-                <div class="qr-frame" id="qr-preview"></div>
-                <div class="preview-label" id="qr-preview-label"></div>
+    <!-- Activity hit overlay (shown when arriving via ?a= URL) -->
+    <div class="activity-hit" id="activity-hit">
+        <div class="activity-hit-box">
+            <div class="activity-hit-badge">✦ Aktivitet Scannet</div>
+            <div class="activity-hit-name" id="ah-name">—</div>
+            <div class="activity-hit-desc" id="ah-desc"></div>
+            <div class="activity-hit-target" id="ah-target"></div>
+            <div class="activity-hit-stats" id="ah-stats"></div>
+            <div class="activity-hit-actions">
+                <button class="btn" id="ah-close">Luk</button>
             </div>
         </div>
     </div>
 
-    <!-- SAVED -->
-    <div class="panel" id="panel-saved">
-        <div class="toolbar">
-            <span class="count" id="saved-count">0 gemte</span>
-            <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <button class="btn" id="btn-export">Eksporter JSON</button>
-                <label class="btn" for="import-file" style="display:inline-block; text-align:center;">Importer JSON</label>
-                <input type="file" id="import-file" accept="application/json" style="display:none">
-                <button class="btn danger" id="btn-clear-all">Slet alle</button>
+    <div class="main-content">
+        <a href="index.html" class="back-link">&larr; BACK</a>
+
+        <h1 class="title"><span>QR</span> <span class="accent">GENERATOR</span></h1>
+        <div class="subtitle">Create · Save · Scan · Track</div>
+
+        <div class="tabs">
+            <button class="tab active" data-tab="generator">Generator</button>
+            <button class="tab" data-tab="saved">Arkiv <span id="saved-badge" style="opacity:0.6"></span></button>
+            <button class="tab" data-tab="scanner">Scanner</button>
+        </div>
+
+        <!-- GENERATOR -->
+        <div class="panel active" id="panel-generator">
+            <div class="gen-wrap">
+                <div class="form" id="gen-form" data-mode="simple">
+                    <div class="type-toggle">
+                        <button type="button" class="active" data-mode="simple">Simpel kode</button>
+                        <button type="button" data-mode="activity">Aktivitet</button>
+                    </div>
+
+                    <div class="field">
+                        <label for="qr-name">Navn</label>
+                        <input type="text" id="qr-name" placeholder="f.eks. 'Zone 1 Start'">
+                    </div>
+
+                    <!-- Simple mode -->
+                    <div class="field only-simple">
+                        <label for="qr-data">Indhold <span class="muted">(tekst / URL)</span></label>
+                        <textarea id="qr-data" placeholder="https://eksempel.dk eller fri tekst"></textarea>
+                    </div>
+
+                    <!-- Activity mode -->
+                    <div class="field only-activity">
+                        <label for="qr-desc">Beskrivelse <span class="muted">(valgfri)</span></label>
+                        <textarea id="qr-desc" placeholder="Vises når aktiviteten scannes"></textarea>
+                    </div>
+                    <div class="field only-activity">
+                        <label for="qr-target">Mål <span class="muted">(URL eller tekst der vises ved scan)</span></label>
+                        <textarea id="qr-target" placeholder="https://... eller instruktioner"></textarea>
+                    </div>
+                    <div class="info-hint only-activity">
+                        <strong>Dynamisk kode:</strong> QR'en peger tilbage til denne app med et unikt ID. Hver gang den scannes registreres antal + tid.
+                    </div>
+
+                    <div class="row-2">
+                        <div class="field">
+                            <label for="qr-size">Størrelse</label>
+                            <select id="qr-size">
+                                <option value="200">200 px</option>
+                                <option value="300" selected>300 px</option>
+                                <option value="500">500 px</option>
+                                <option value="800">800 px</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="qr-ecl">Fejlkorrigering</label>
+                            <select id="qr-ecl">
+                                <option value="L">L (7%)</option>
+                                <option value="M" selected>M (15%)</option>
+                                <option value="Q">Q (25%)</option>
+                                <option value="H">H (30%)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row-2">
+                        <div class="field">
+                            <label for="qr-fg">Farve (forgrund)</label>
+                            <input type="color" id="qr-fg" value="#000000">
+                        </div>
+                        <div class="field">
+                            <label for="qr-bg">Farve (baggrund)</label>
+                            <input type="color" id="qr-bg" value="#ffffff">
+                        </div>
+                    </div>
+                    <div class="btn-row">
+                        <button class="btn primary" id="btn-generate">Generer</button>
+                        <button class="btn" id="btn-save">Gem i arkiv</button>
+                        <button class="btn" id="btn-download">Download PNG</button>
+                        <button class="btn" id="btn-new" title="Ryd formular">Ny</button>
+                    </div>
+                </div>
+
+                <div class="preview">
+                    <div class="qr-frame" id="qr-preview"></div>
+                    <div class="preview-label" id="qr-preview-label"></div>
+                </div>
             </div>
         </div>
-        <div class="gallery" id="gallery"></div>
-        <div class="empty" id="empty-msg" style="display:none;">Ingen gemte koder endnu — lav en på Generator-fanen</div>
-    </div>
 
-    <!-- SCANNER -->
-    <div class="panel" id="panel-scanner">
-        <div id="scanner-box">
-            <div id="reader"></div>
-            <div class="scanner-controls">
-                <button class="btn primary" id="btn-scan-start">Start scanner</button>
-                <button class="btn" id="btn-scan-stop" style="display:none;">Stop</button>
+        <!-- SAVED -->
+        <div class="panel" id="panel-saved">
+            <div class="toolbar">
+                <span class="count" id="saved-count">0 gemte</span>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button class="btn" id="btn-export">Eksporter JSON</button>
+                    <label class="btn" for="import-file" style="display:inline-block; text-align:center;">Importer JSON</label>
+                    <input type="file" id="import-file" accept="application/json" style="display:none">
+                    <button class="btn danger" id="btn-clear-all">Slet alle</button>
+                </div>
             </div>
-            <div class="scan-result" id="scan-result">
-                <div class="scan-label">Seneste scan</div>
-                <div id="scan-content"></div>
-                <div class="btn-row" style="margin-top:10px;">
-                    <button class="btn" id="btn-scan-copy">Kopier</button>
-                    <button class="btn" id="btn-scan-save">Gem i arkiv</button>
+            <div class="gallery" id="gallery"></div>
+            <div class="empty" id="empty-msg" style="display:none;">Ingen gemte koder endnu — lav en på Generator-fanen</div>
+        </div>
+
+        <!-- SCANNER -->
+        <div class="panel" id="panel-scanner">
+            <div id="scanner-box">
+                <div id="reader"></div>
+                <div class="scanner-controls">
+                    <button class="btn primary" id="btn-scan-start">Start scanner</button>
+                    <button class="btn" id="btn-scan-stop" style="display:none;">Stop</button>
+                </div>
+                <div class="scan-result" id="scan-result">
+                    <div class="scan-label" id="scan-label">Seneste scan</div>
+                    <div id="scan-content"></div>
+                    <div class="btn-row" style="margin-top:10px;">
+                        <button class="btn" id="btn-scan-copy">Kopier</button>
+                        <button class="btn" id="btn-scan-save">Gem i arkiv</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -485,6 +771,9 @@
     (function () {
         const STORAGE_KEY = 'games_qr_archive_v1';
         let lastScan = null;
+        let currentQR = null;
+        let currentMeta = null; // {type, id, data, name, description, target, size, ecl, fg, bg}
+        let editingId = null;   // id of archive entry being edited
 
         // ---------- Toast ----------
         const toastEl = document.getElementById('toast');
@@ -493,7 +782,33 @@
             toastEl.textContent = msg;
             toastEl.classList.add('show');
             clearTimeout(toastTimer);
-            toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2200);
+            toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2400);
+        }
+
+        // ---------- Utilities ----------
+        function newId() {
+            return 'qr_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+        }
+        function hostBase() {
+            return location.origin + location.pathname;
+        }
+        function buildActivityUrl(id, target) {
+            const params = new URLSearchParams();
+            params.set('a', id);
+            if (target && /^https?:\/\//i.test(target)) {
+                params.set('to', target);
+            }
+            return hostBase() + '?' + params.toString();
+        }
+        function formatDate(iso) {
+            if (!iso) return '—';
+            const d = new Date(iso);
+            const now = new Date();
+            const ms = now - d;
+            if (ms < 60000) return 'lige nu';
+            if (ms < 3600000) return Math.floor(ms/60000) + ' min siden';
+            if (ms < 86400000) return Math.floor(ms/3600000) + ' t siden';
+            return d.toLocaleDateString('da-DK') + ' ' + d.toLocaleTimeString('da-DK', {hour:'2-digit',minute:'2-digit'});
         }
 
         // ---------- Tabs ----------
@@ -509,11 +824,18 @@
             });
         });
 
+        // ---------- Type toggle ----------
+        const form = document.getElementById('gen-form');
+        document.querySelectorAll('.type-toggle button').forEach(b => {
+            b.addEventListener('click', () => {
+                document.querySelectorAll('.type-toggle button').forEach(x => x.classList.toggle('active', x === b));
+                form.dataset.mode = b.dataset.mode;
+            });
+        });
+
         // ---------- Generator ----------
         const previewEl = document.getElementById('qr-preview');
         const previewLabel = document.getElementById('qr-preview-label');
-        let currentQR = null;
-        let currentData = '';
 
         function eclMap(v) {
             return { L: QRCode.CorrectLevel.L, M: QRCode.CorrectLevel.M,
@@ -522,8 +844,11 @@
 
         function readForm() {
             return {
+                mode: form.dataset.mode,
                 name: document.getElementById('qr-name').value.trim(),
                 data: document.getElementById('qr-data').value.trim(),
+                description: document.getElementById('qr-desc').value.trim(),
+                target: document.getElementById('qr-target').value.trim(),
                 size: parseInt(document.getElementById('qr-size').value, 10),
                 ecl: document.getElementById('qr-ecl').value,
                 fg: document.getElementById('qr-fg').value,
@@ -531,21 +856,37 @@
             };
         }
 
+        function clearForm() {
+            ['qr-name','qr-data','qr-desc','qr-target'].forEach(id => document.getElementById(id).value = '');
+            previewEl.innerHTML = '';
+            previewLabel.textContent = '';
+            currentQR = null;
+            currentMeta = null;
+            editingId = null;
+        }
+
         function generate() {
             const cfg = readForm();
-            if (!cfg.data) { toast('Indtast indhold først'); return null; }
+            let textToEncode;
+            if (cfg.mode === 'activity') {
+                if (!cfg.name && !cfg.target) { toast('Navn eller mål påkrævet'); return null; }
+                const id = editingId || newId();
+                textToEncode = buildActivityUrl(id, cfg.target);
+                currentMeta = { type: 'activity', id, ...cfg, data: textToEncode };
+            } else {
+                if (!cfg.data) { toast('Indtast indhold først'); return null; }
+                textToEncode = cfg.data;
+                currentMeta = { type: 'simple', id: editingId || newId(), ...cfg };
+            }
             previewEl.innerHTML = '';
             currentQR = new QRCode(previewEl, {
-                text: cfg.data,
-                width: cfg.size,
-                height: cfg.size,
-                colorDark: cfg.fg,
-                colorLight: cfg.bg,
+                text: textToEncode,
+                width: cfg.size, height: cfg.size,
+                colorDark: cfg.fg, colorLight: cfg.bg,
                 correctLevel: eclMap(cfg.ecl)
             });
-            currentData = cfg.data;
-            previewLabel.textContent = cfg.data.length > 80 ? cfg.data.slice(0, 80) + '…' : cfg.data;
-            return cfg;
+            previewLabel.textContent = textToEncode.length > 80 ? textToEncode.slice(0, 80) + '…' : textToEncode;
+            return currentMeta;
         }
 
         function getPreviewDataURL() {
@@ -565,43 +906,67 @@
             if (!currentQR) { toast('Generer først'); return; }
             const url = getPreviewDataURL();
             if (!url) { toast('Kunne ikke hente billede'); return; }
-            const cfg = readForm();
             const a = document.createElement('a');
             a.href = url;
-            a.download = (cfg.name || 'qrcode') + '.png';
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
+            a.download = (currentMeta.name || 'qrcode') + '.png';
+            document.body.appendChild(a); a.click(); a.remove();
         });
 
         document.getElementById('btn-save').addEventListener('click', () => {
             if (!currentQR) {
-                const cfg = generate();
-                if (!cfg) return;
+                if (!generate()) return;
                 setTimeout(saveCurrent, 50);
                 return;
             }
             saveCurrent();
         });
 
+        document.getElementById('btn-new').addEventListener('click', () => {
+            clearForm();
+            toast('Ny');
+        });
+
         function saveCurrent() {
-            const cfg = readForm();
-            if (!cfg.data) { toast('Intet at gemme'); return; }
-            const url = getPreviewDataURL();
-            if (!url) { toast('Kunne ikke hente billede'); return; }
-            const entry = {
-                id: 'qr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
-                name: cfg.name || cfg.data.slice(0, 30),
-                data: cfg.data,
-                size: cfg.size, ecl: cfg.ecl, fg: cfg.fg, bg: cfg.bg,
-                image: url,
+            if (!currentMeta) { toast('Generer først'); return; }
+            const image = getPreviewDataURL();
+            if (!image) { toast('Kunne ikke hente billede'); return; }
+            const arr = loadArchive();
+            const existingIdx = arr.findIndex(x => x.id === currentMeta.id);
+
+            const baseEntry = {
+                id: currentMeta.id,
+                type: currentMeta.type,
+                name: currentMeta.name || (currentMeta.type === 'activity' ? 'Aktivitet' : currentMeta.data.slice(0, 30)),
+                data: currentMeta.data,
+                description: currentMeta.description || '',
+                target: currentMeta.target || '',
+                size: currentMeta.size, ecl: currentMeta.ecl,
+                fg: currentMeta.fg, bg: currentMeta.bg,
+                image,
                 created: new Date().toISOString()
             };
-            const arr = loadArchive();
-            arr.unshift(entry);
+
+            if (existingIdx >= 0) {
+                // Preserve scan history
+                const prev = arr[existingIdx];
+                baseEntry.created = prev.created;
+                baseEntry.scans = prev.scans || [];
+                baseEntry.scanCount = prev.scanCount || 0;
+                baseEntry.lastScan = prev.lastScan || null;
+                arr[existingIdx] = baseEntry;
+                toast('Opdateret');
+            } else {
+                if (currentMeta.type === 'activity') {
+                    baseEntry.scans = [];
+                    baseEntry.scanCount = 0;
+                    baseEntry.lastScan = null;
+                }
+                arr.unshift(baseEntry);
+                editingId = baseEntry.id;
+                toast('Gemt i arkiv');
+            }
             saveArchive(arr);
             updateBadge();
-            toast('Gemt i arkiv');
         }
 
         // ---------- Archive ----------
@@ -627,21 +992,38 @@
             wrap.innerHTML = '';
             if (!arr.length) { empty.style.display = 'block'; return; }
             empty.style.display = 'none';
+
             arr.forEach(item => {
+                const isAct = item.type === 'activity';
                 const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    <div class="card-qr"><img src="${item.image}" alt=""></div>
-                    <div class="card-name"></div>
-                    <div class="card-data"></div>
+                card.className = 'card' + (isAct ? ' is-activity' : '');
+
+                let html = '';
+                if (isAct) html += '<div class="card-badge">Aktivitet</div>';
+                html += `<div class="card-qr"><img src="${item.image}" alt=""></div>`;
+                html += `<div class="card-name"></div>`;
+                html += `<div class="card-data"></div>`;
+                if (isAct) {
+                    html += `
+                        <div class="card-stats">
+                            <span class="scans">${item.scanCount || 0} scan${(item.scanCount || 0) === 1 ? '' : 's'}</span>
+                            <span class="last">${item.lastScan ? formatDate(item.lastScan) : 'Ingen endnu'}</span>
+                        </div>`;
+                }
+                html += `
                     <div class="card-actions">
-                        <button class="icon-btn" data-act="load">Load</button>
+                        <button class="icon-btn" data-act="load">Rediger</button>
                         <button class="icon-btn" data-act="dl">PNG</button>
                         <button class="icon-btn" data-act="copy">Copy</button>
+                        ${isAct ? '<button class="icon-btn" data-act="reset">Nulstil</button>' : ''}
                         <button class="icon-btn del" data-act="del">Slet</button>
                     </div>`;
+                card.innerHTML = html;
+
                 card.querySelector('.card-name').textContent = item.name;
-                card.querySelector('.card-data').textContent = item.data;
+                card.querySelector('.card-data').textContent = isAct
+                    ? (item.description || item.target || '—')
+                    : item.data;
                 card.querySelectorAll('[data-act]').forEach(b => {
                     b.addEventListener('click', () => handleCard(b.dataset.act, item));
                 });
@@ -652,15 +1034,19 @@
         function handleCard(act, item) {
             if (act === 'del') {
                 if (!confirm('Slet "' + item.name + '"?')) return;
-                const arr = loadArchive().filter(x => x.id !== item.id);
-                saveArchive(arr);
-                renderGallery();
-                updateBadge();
+                saveArchive(loadArchive().filter(x => x.id !== item.id));
+                renderGallery(); updateBadge();
                 toast('Slettet');
+            } else if (act === 'reset') {
+                if (!confirm('Nulstil tæller for "' + item.name + '"?')) return;
+                const arr = loadArchive();
+                const it = arr.find(x => x.id === item.id);
+                if (it) { it.scans = []; it.scanCount = 0; it.lastScan = null; saveArchive(arr); }
+                renderGallery();
+                toast('Tæller nulstillet');
             } else if (act === 'dl') {
                 const a = document.createElement('a');
-                a.href = item.image;
-                a.download = item.name + '.png';
+                a.href = item.image; a.download = item.name + '.png';
                 document.body.appendChild(a); a.click(); a.remove();
             } else if (act === 'copy') {
                 navigator.clipboard.writeText(item.data).then(
@@ -668,12 +1054,19 @@
                     () => toast('Kopi fejlede')
                 );
             } else if (act === 'load') {
-                document.getElementById('qr-name').value = item.name;
-                document.getElementById('qr-data').value = item.data;
+                const isAct = item.type === 'activity';
+                form.dataset.mode = isAct ? 'activity' : 'simple';
+                document.querySelectorAll('.type-toggle button').forEach(b =>
+                    b.classList.toggle('active', b.dataset.mode === form.dataset.mode));
+                document.getElementById('qr-name').value = item.name || '';
+                document.getElementById('qr-data').value = isAct ? '' : (item.data || '');
+                document.getElementById('qr-desc').value = item.description || '';
+                document.getElementById('qr-target').value = item.target || '';
                 document.getElementById('qr-size').value = item.size;
                 document.getElementById('qr-ecl').value = item.ecl;
                 document.getElementById('qr-fg').value = item.fg;
                 document.getElementById('qr-bg').value = item.bg;
+                editingId = item.id;
                 document.querySelector('.tab[data-tab="generator"]').click();
                 generate();
             }
@@ -682,9 +1075,7 @@
         document.getElementById('btn-clear-all').addEventListener('click', () => {
             if (!loadArchive().length) return;
             if (!confirm('Slet ALLE gemte koder? Kan ikke fortrydes.')) return;
-            saveArchive([]);
-            renderGallery();
-            updateBadge();
+            saveArchive([]); renderGallery(); updateBadge();
             toast('Arkiv tømt');
         });
 
@@ -711,17 +1102,34 @@
                     const current = loadArchive();
                     const existing = new Set(current.map(x => x.id));
                     const merged = current.concat(imported.filter(x => x.id && x.data && !existing.has(x.id)));
-                    saveArchive(merged);
-                    renderGallery();
-                    updateBadge();
+                    saveArchive(merged); renderGallery(); updateBadge();
                     toast('Importeret: ' + (merged.length - current.length));
-                } catch (err) {
-                    toast('Fejl: ugyldig fil');
-                }
+                } catch (err) { toast('Fejl: ugyldig fil'); }
                 e.target.value = '';
             };
             reader.readAsText(file);
         });
+
+        // ---------- Scan tracking ----------
+        function logActivityScan(id, source) {
+            const arr = loadArchive();
+            const it = arr.find(x => x.id === id && x.type === 'activity');
+            if (!it) return null;
+            it.scans = it.scans || [];
+            it.scans.push({ at: new Date().toISOString(), src: source });
+            it.scanCount = (it.scanCount || 0) + 1;
+            it.lastScan = new Date().toISOString();
+            saveArchive(arr);
+            return it;
+        }
+
+        function extractActivityId(text) {
+            try {
+                // Match ?a=<id> or &a=<id> in any URL-ish string
+                const m = text.match(/[?&]a=([A-Za-z0-9_]+)/);
+                return m ? m[1] : null;
+            } catch (e) { return null; }
+        }
 
         // ---------- Scanner ----------
         let scanner = null;
@@ -736,30 +1144,16 @@
             Html5Qrcode.getCameras().then(cams => {
                 if (!cams || !cams.length) { toast('Ingen kamera fundet'); scanner = null; return; }
                 const cam = cams.find(c => /back|rear|environment/i.test(c.label)) || cams[cams.length - 1];
-                scanner.start(
-                    cam.id,
-                    config,
-                    (text) => onScan(text),
-                    () => {}
-                ).then(() => {
+                scanner.start(cam.id, config, (text) => onScan(text), () => {}).then(() => {
                     document.getElementById('btn-scan-start').style.display = 'none';
                     document.getElementById('btn-scan-stop').style.display = 'inline-block';
-                }).catch(err => {
-                    toast('Kamera fejl');
-                    console.error(err);
-                    scanner = null;
-                });
-            }).catch(err => {
-                toast('Kamera ikke tilgængeligt');
-                console.error(err);
-                scanner = null;
-            });
+                }).catch(err => { toast('Kamera fejl'); console.error(err); scanner = null; });
+            }).catch(err => { toast('Kamera ikke tilgængeligt'); console.error(err); scanner = null; });
         }
 
         function stopScanner() {
             if (!scanner) return;
-            const s = scanner;
-            scanner = null;
+            const s = scanner; scanner = null;
             s.stop().then(() => {
                 s.clear();
                 document.getElementById('btn-scan-start').style.display = 'inline-block';
@@ -771,22 +1165,37 @@
             if (lastScan === text) return;
             lastScan = text;
             const box = document.getElementById('scan-result');
+            const label = document.getElementById('scan-label');
             const content = document.getElementById('scan-content');
             content.innerHTML = '';
-            const isURL = /^https?:\/\//i.test(text);
-            if (isURL) {
-                const a = document.createElement('a');
-                a.href = text; a.textContent = text;
-                a.target = '_blank'; a.rel = 'noopener';
-                content.appendChild(a);
+            box.classList.remove('activity');
+
+            // Check for activity id
+            const actId = extractActivityId(text);
+            const activity = actId ? logActivityScan(actId, 'scanner') : null;
+            if (activity) {
+                box.classList.add('activity');
+                label.textContent = 'Aktivitet scannet · ' + activity.scanCount + ' total';
+                const h = document.createElement('div');
+                h.innerHTML = `<strong style="font-size:15px">${activity.name}</strong>
+                               ${activity.description ? '<div style="margin-top:4px;opacity:0.7">' + activity.description + '</div>' : ''}
+                               ${activity.target ? '<div style="margin-top:8px;font-size:11px;opacity:0.5">→ ' + activity.target + '</div>' : ''}`;
+                content.appendChild(h);
+                toast('Aktivitet +1');
             } else {
-                content.textContent = text;
+                label.textContent = 'Seneste scan';
+                const isURL = /^https?:\/\//i.test(text);
+                if (isURL) {
+                    const a = document.createElement('a');
+                    a.href = text; a.textContent = text; a.target = '_blank'; a.rel = 'noopener';
+                    content.appendChild(a);
+                } else {
+                    content.textContent = text;
+                }
+                toast('Scannet');
             }
             box.classList.add('show');
-            try {
-                if (navigator.vibrate) navigator.vibrate(80);
-            } catch (e) {}
-            toast('Scannet');
+            try { if (navigator.vibrate) navigator.vibrate(80); } catch (e) {}
         }
 
         document.getElementById('btn-scan-start').addEventListener('click', startScanner);
@@ -795,28 +1204,81 @@
         document.getElementById('btn-scan-copy').addEventListener('click', () => {
             if (!lastScan) return;
             navigator.clipboard.writeText(lastScan).then(
-                () => toast('Kopieret'),
-                () => toast('Kopi fejlede')
-            );
+                () => toast('Kopieret'), () => toast('Kopi fejlede'));
         });
 
         document.getElementById('btn-scan-save').addEventListener('click', () => {
             if (!lastScan) return;
+            form.dataset.mode = 'simple';
+            document.querySelectorAll('.type-toggle button').forEach(b =>
+                b.classList.toggle('active', b.dataset.mode === 'simple'));
             document.getElementById('qr-name').value = 'Scannet ' + new Date().toLocaleString('da-DK');
             document.getElementById('qr-data').value = lastScan;
+            editingId = null;
             document.querySelector('.tab[data-tab="generator"]').click();
-            const cfg = generate();
-            if (cfg) setTimeout(saveCurrent, 50);
+            if (generate()) setTimeout(saveCurrent, 50);
         });
 
-        // Stop camera if page hidden / left
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) stopScanner();
-        });
+        document.addEventListener('visibilitychange', () => { if (document.hidden) stopScanner(); });
         window.addEventListener('beforeunload', stopScanner);
+
+        // ---------- Activity URL handler (?a=... ) ----------
+        function handleActivityVisit() {
+            const params = new URLSearchParams(location.search);
+            const id = params.get('a');
+            if (!id) return;
+            const to = params.get('to');
+
+            const arr = loadArchive();
+            const activity = arr.find(x => x.id === id && x.type === 'activity');
+
+            const overlay = document.getElementById('activity-hit');
+            const nameEl = document.getElementById('ah-name');
+            const descEl = document.getElementById('ah-desc');
+            const targetEl = document.getElementById('ah-target');
+            const statsEl = document.getElementById('ah-stats');
+
+            let targetValue = null;
+            if (activity) {
+                const updated = logActivityScan(id, 'url');
+                nameEl.textContent = updated.name;
+                descEl.textContent = updated.description || '';
+                targetValue = updated.target;
+                statsEl.innerHTML = `<span class="num">${updated.scanCount}</span> total scan${updated.scanCount === 1 ? '' : 's'} på denne enhed`;
+            } else {
+                nameEl.textContent = to ? 'Aktivitet' : 'Ukendt aktivitet';
+                descEl.textContent = to ? '' : 'ID: ' + id;
+                targetValue = to;
+                statsEl.innerHTML = '';
+            }
+
+            targetEl.innerHTML = '';
+            if (targetValue) {
+                if (/^https?:\/\//i.test(targetValue)) {
+                    const a = document.createElement('a');
+                    a.href = targetValue; a.className = 'btn primary';
+                    a.textContent = 'Åbn →'; a.target = '_blank'; a.rel = 'noopener';
+                    targetEl.appendChild(a);
+                } else {
+                    const div = document.createElement('div');
+                    div.className = 'target-text';
+                    div.textContent = targetValue;
+                    targetEl.appendChild(div);
+                }
+            }
+
+            overlay.classList.add('show');
+            // Clean URL so refresh doesn't double-count
+            history.replaceState({}, '', location.pathname);
+        }
+
+        document.getElementById('ah-close').addEventListener('click', () => {
+            document.getElementById('activity-hit').classList.remove('show');
+        });
 
         // ---------- Init ----------
         updateBadge();
+        handleActivityVisit();
     })();
     </script>
 </body>
