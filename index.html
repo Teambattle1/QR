@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Generator - GAMES</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: #000;
+            min-height: 100vh;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 70px 20px 40px;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 20px;
+            left: 25px;
+            color: #00d4ff;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            z-index: 50;
+            transition: opacity 0.3s ease;
+        }
+        .back-link:hover { opacity: 0.7; }
+
+        .title {
+            text-align: center;
+            font-size: 38px;
+            font-weight: bold;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        .title .accent {
+            color: #00d4ff;
+            text-shadow: 0 0 20px rgba(0, 212, 255, 0.6);
+        }
+        .subtitle {
+            text-align: center;
+            color: rgba(255,255,255,0.4);
+            font-size: 13px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 30px;
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .tab {
+            padding: 10px 24px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 25px;
+            color: rgba(255,255,255,0.6);
+            font-size: 13px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        .tab:hover {
+            color: #00d4ff;
+            border-color: rgba(0, 212, 255, 0.4);
+        }
+        .tab.active {
+            color: #00d4ff;
+            border-color: rgba(0, 212, 255, 0.7);
+            background: rgba(0, 212, 255, 0.08);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.25);
+        }
+
+        .panel { display: none; max-width: 900px; margin: 0 auto; }
+        .panel.active { display: block; }
+
+        /* Generator panel */
+        .gen-wrap {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 30px;
+            align-items: start;
+        }
+        @media (max-width: 720px) {
+            .gen-wrap { grid-template-columns: 1fr; }
+        }
+
+        .form {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 22px;
+        }
+        .field { margin-bottom: 16px; }
+        .field label {
+            display: block;
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 6px;
+        }
+        .field input[type="text"],
+        .field textarea,
+        .field select {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.2s ease;
+        }
+        .field textarea { min-height: 80px; resize: vertical; }
+        .field input:focus, .field textarea:focus, .field select:focus {
+            outline: none;
+            border-color: rgba(0, 212, 255, 0.6);
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.15);
+        }
+        .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .field input[type="color"] {
+            width: 100%;
+            height: 40px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 11px 22px;
+            font-size: 13px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            text-decoration: none;
+            color: rgba(255,255,255,0.7);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 25px;
+            background: rgba(255,255,255,0.04);
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.25s ease;
+        }
+        .btn:hover {
+            color: #00d4ff;
+            border-color: rgba(0, 212, 255, 0.5);
+            background: rgba(0, 212, 255, 0.1);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+        }
+        .btn.primary {
+            color: #00d4ff;
+            border-color: rgba(0, 212, 255, 0.5);
+            background: rgba(0, 212, 255, 0.08);
+        }
+        .btn.primary:hover {
+            background: rgba(0, 212, 255, 0.18);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+        }
+        .btn.danger:hover {
+            color: #ff5577;
+            border-color: rgba(255, 85, 119, 0.5);
+            background: rgba(255, 85, 119, 0.1);
+            box-shadow: 0 0 15px rgba(255, 85, 119, 0.2);
+        }
+        .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+
+        .preview {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        .qr-frame {
+            display: inline-block;
+            padding: 16px;
+            background: #fff;
+            border-radius: 8px;
+            min-width: 232px;
+            min-height: 232px;
+            position: relative;
+        }
+        .qr-frame:empty::before {
+            content: 'QR Preview';
+            color: rgba(0,0,0,0.3);
+            font-size: 13px;
+            letter-spacing: 2px;
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .preview-label {
+            margin-top: 14px;
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.4);
+            word-break: break-all;
+            max-height: 60px;
+            overflow: hidden;
+        }
+
+        /* Saved gallery */
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        .card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 14px;
+            transition: all 0.25s ease;
+        }
+        .card:hover {
+            border-color: rgba(0, 212, 255, 0.4);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.15);
+        }
+        .card-qr {
+            background: #fff;
+            border-radius: 6px;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            aspect-ratio: 1;
+            margin-bottom: 10px;
+        }
+        .card-qr img { max-width: 100%; max-height: 100%; display: block; }
+        .card-name {
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .card-data {
+            font-size: 10px;
+            color: rgba(255,255,255,0.4);
+            letter-spacing: 1px;
+            word-break: break-all;
+            height: 28px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+        .card-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+        .icon-btn {
+            padding: 6px 10px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 5px;
+            color: rgba(255,255,255,0.6);
+            font-size: 10px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            flex: 1;
+            min-width: 40px;
+        }
+        .icon-btn:hover {
+            color: #00d4ff;
+            border-color: rgba(0, 212, 255, 0.4);
+        }
+        .icon-btn.del:hover {
+            color: #ff5577;
+            border-color: rgba(255, 85, 119, 0.5);
+        }
+
+        .empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(255,255,255,0.3);
+            font-size: 14px;
+            letter-spacing: 2px;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .count {
+            font-size: 12px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.4);
+        }
+
+        /* Scanner */
+        #scanner-box {
+            max-width: 500px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        #reader { width: 100%; border-radius: 8px; overflow: hidden; }
+        #reader video { border-radius: 8px; }
+        .scan-result {
+            margin-top: 16px;
+            padding: 14px;
+            background: rgba(0, 212, 255, 0.08);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 8px;
+            font-size: 13px;
+            word-break: break-all;
+            display: none;
+        }
+        .scan-result.show { display: block; }
+        .scan-result a { color: #00d4ff; text-decoration: none; }
+        .scan-result a:hover { text-decoration: underline; }
+        .scan-label {
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 6px;
+        }
+        .scanner-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 14px;
+            flex-wrap: wrap;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(0, 212, 255, 0.15);
+            border: 1px solid rgba(0, 212, 255, 0.5);
+            color: #00d4ff;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 12px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            transition: transform 0.3s ease;
+            z-index: 100;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+
+        @media (max-width: 600px) {
+            .title { font-size: 26px; letter-spacing: 2px; }
+            body { padding: 60px 14px 30px; }
+            .tab { padding: 8px 16px; font-size: 11px; }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">&larr; BACK</a>
+
+    <h1 class="title"><span>QR</span> <span class="accent">GENERATOR</span></h1>
+    <div class="subtitle">Create · Save · Scan</div>
+
+    <div class="tabs">
+        <button class="tab active" data-tab="generator">Generator</button>
+        <button class="tab" data-tab="saved">Saved <span id="saved-badge" style="opacity:0.6"></span></button>
+        <button class="tab" data-tab="scanner">Scanner</button>
+    </div>
+
+    <!-- GENERATOR -->
+    <div class="panel active" id="panel-generator">
+        <div class="gen-wrap">
+            <div class="form">
+                <div class="field">
+                    <label for="qr-name">Navn (til arkiv)</label>
+                    <input type="text" id="qr-name" placeholder="f.eks. 'Zone 1 Start'">
+                </div>
+                <div class="field">
+                    <label for="qr-data">Indhold (tekst / URL)</label>
+                    <textarea id="qr-data" placeholder="https://eksempel.dk eller fri tekst"></textarea>
+                </div>
+                <div class="row-2">
+                    <div class="field">
+                        <label for="qr-size">Størrelse</label>
+                        <select id="qr-size">
+                            <option value="200">200 px</option>
+                            <option value="300" selected>300 px</option>
+                            <option value="500">500 px</option>
+                            <option value="800">800 px</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="qr-ecl">Fejlkorrigering</label>
+                        <select id="qr-ecl">
+                            <option value="L">L (7%)</option>
+                            <option value="M" selected>M (15%)</option>
+                            <option value="Q">Q (25%)</option>
+                            <option value="H">H (30%)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row-2">
+                    <div class="field">
+                        <label for="qr-fg">Farve (forgrund)</label>
+                        <input type="color" id="qr-fg" value="#000000">
+                    </div>
+                    <div class="field">
+                        <label for="qr-bg">Farve (baggrund)</label>
+                        <input type="color" id="qr-bg" value="#ffffff">
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <button class="btn primary" id="btn-generate">Generer</button>
+                    <button class="btn" id="btn-save">Gem i arkiv</button>
+                    <button class="btn" id="btn-download">Download PNG</button>
+                </div>
+            </div>
+
+            <div class="preview">
+                <div class="qr-frame" id="qr-preview"></div>
+                <div class="preview-label" id="qr-preview-label"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SAVED -->
+    <div class="panel" id="panel-saved">
+        <div class="toolbar">
+            <span class="count" id="saved-count">0 gemte</span>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn" id="btn-export">Eksporter JSON</button>
+                <label class="btn" for="import-file" style="display:inline-block; text-align:center;">Importer JSON</label>
+                <input type="file" id="import-file" accept="application/json" style="display:none">
+                <button class="btn danger" id="btn-clear-all">Slet alle</button>
+            </div>
+        </div>
+        <div class="gallery" id="gallery"></div>
+        <div class="empty" id="empty-msg" style="display:none;">Ingen gemte koder endnu — lav en på Generator-fanen</div>
+    </div>
+
+    <!-- SCANNER -->
+    <div class="panel" id="panel-scanner">
+        <div id="scanner-box">
+            <div id="reader"></div>
+            <div class="scanner-controls">
+                <button class="btn primary" id="btn-scan-start">Start scanner</button>
+                <button class="btn" id="btn-scan-stop" style="display:none;">Stop</button>
+            </div>
+            <div class="scan-result" id="scan-result">
+                <div class="scan-label">Seneste scan</div>
+                <div id="scan-content"></div>
+                <div class="btn-row" style="margin-top:10px;">
+                    <button class="btn" id="btn-scan-copy">Kopier</button>
+                    <button class="btn" id="btn-scan-save">Gem i arkiv</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+    (function () {
+        const STORAGE_KEY = 'games_qr_archive_v1';
+        let lastScan = null;
+
+        // ---------- Toast ----------
+        const toastEl = document.getElementById('toast');
+        let toastTimer;
+        function toast(msg) {
+            toastEl.textContent = msg;
+            toastEl.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2200);
+        }
+
+        // ---------- Tabs ----------
+        document.querySelectorAll('.tab').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const name = btn.dataset.tab;
+                document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === btn));
+                document.querySelectorAll('.panel').forEach(p => {
+                    p.classList.toggle('active', p.id === 'panel-' + name);
+                });
+                if (name === 'saved') renderGallery();
+                if (name !== 'scanner') stopScanner();
+            });
+        });
+
+        // ---------- Generator ----------
+        const previewEl = document.getElementById('qr-preview');
+        const previewLabel = document.getElementById('qr-preview-label');
+        let currentQR = null;
+        let currentData = '';
+
+        function eclMap(v) {
+            return { L: QRCode.CorrectLevel.L, M: QRCode.CorrectLevel.M,
+                     Q: QRCode.CorrectLevel.Q, H: QRCode.CorrectLevel.H }[v];
+        }
+
+        function readForm() {
+            return {
+                name: document.getElementById('qr-name').value.trim(),
+                data: document.getElementById('qr-data').value.trim(),
+                size: parseInt(document.getElementById('qr-size').value, 10),
+                ecl: document.getElementById('qr-ecl').value,
+                fg: document.getElementById('qr-fg').value,
+                bg: document.getElementById('qr-bg').value
+            };
+        }
+
+        function generate() {
+            const cfg = readForm();
+            if (!cfg.data) { toast('Indtast indhold først'); return null; }
+            previewEl.innerHTML = '';
+            currentQR = new QRCode(previewEl, {
+                text: cfg.data,
+                width: cfg.size,
+                height: cfg.size,
+                colorDark: cfg.fg,
+                colorLight: cfg.bg,
+                correctLevel: eclMap(cfg.ecl)
+            });
+            currentData = cfg.data;
+            previewLabel.textContent = cfg.data.length > 80 ? cfg.data.slice(0, 80) + '…' : cfg.data;
+            return cfg;
+        }
+
+        function getPreviewDataURL() {
+            const img = previewEl.querySelector('img');
+            const canvas = previewEl.querySelector('canvas');
+            if (img && img.src) return img.src;
+            if (canvas) return canvas.toDataURL('image/png');
+            return null;
+        }
+
+        document.getElementById('btn-generate').addEventListener('click', generate);
+        document.getElementById('qr-data').addEventListener('keydown', e => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') generate();
+        });
+
+        document.getElementById('btn-download').addEventListener('click', () => {
+            if (!currentQR) { toast('Generer først'); return; }
+            const url = getPreviewDataURL();
+            if (!url) { toast('Kunne ikke hente billede'); return; }
+            const cfg = readForm();
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = (cfg.name || 'qrcode') + '.png';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        });
+
+        document.getElementById('btn-save').addEventListener('click', () => {
+            if (!currentQR) {
+                const cfg = generate();
+                if (!cfg) return;
+                setTimeout(saveCurrent, 50);
+                return;
+            }
+            saveCurrent();
+        });
+
+        function saveCurrent() {
+            const cfg = readForm();
+            if (!cfg.data) { toast('Intet at gemme'); return; }
+            const url = getPreviewDataURL();
+            if (!url) { toast('Kunne ikke hente billede'); return; }
+            const entry = {
+                id: 'qr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+                name: cfg.name || cfg.data.slice(0, 30),
+                data: cfg.data,
+                size: cfg.size, ecl: cfg.ecl, fg: cfg.fg, bg: cfg.bg,
+                image: url,
+                created: new Date().toISOString()
+            };
+            const arr = loadArchive();
+            arr.unshift(entry);
+            saveArchive(arr);
+            updateBadge();
+            toast('Gemt i arkiv');
+        }
+
+        // ---------- Archive ----------
+        function loadArchive() {
+            try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+            catch (e) { return []; }
+        }
+        function saveArchive(arr) {
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); }
+            catch (e) { toast('Fejl: lager fyldt'); }
+        }
+        function updateBadge() {
+            const n = loadArchive().length;
+            document.getElementById('saved-badge').textContent = n ? '(' + n + ')' : '';
+        }
+
+        function renderGallery() {
+            const arr = loadArchive();
+            const wrap = document.getElementById('gallery');
+            const empty = document.getElementById('empty-msg');
+            document.getElementById('saved-count').textContent =
+                arr.length + ' gemt' + (arr.length === 1 ? '' : 'e');
+            wrap.innerHTML = '';
+            if (!arr.length) { empty.style.display = 'block'; return; }
+            empty.style.display = 'none';
+            arr.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="card-qr"><img src="${item.image}" alt=""></div>
+                    <div class="card-name"></div>
+                    <div class="card-data"></div>
+                    <div class="card-actions">
+                        <button class="icon-btn" data-act="load">Load</button>
+                        <button class="icon-btn" data-act="dl">PNG</button>
+                        <button class="icon-btn" data-act="copy">Copy</button>
+                        <button class="icon-btn del" data-act="del">Slet</button>
+                    </div>`;
+                card.querySelector('.card-name').textContent = item.name;
+                card.querySelector('.card-data').textContent = item.data;
+                card.querySelectorAll('[data-act]').forEach(b => {
+                    b.addEventListener('click', () => handleCard(b.dataset.act, item));
+                });
+                wrap.appendChild(card);
+            });
+        }
+
+        function handleCard(act, item) {
+            if (act === 'del') {
+                if (!confirm('Slet "' + item.name + '"?')) return;
+                const arr = loadArchive().filter(x => x.id !== item.id);
+                saveArchive(arr);
+                renderGallery();
+                updateBadge();
+                toast('Slettet');
+            } else if (act === 'dl') {
+                const a = document.createElement('a');
+                a.href = item.image;
+                a.download = item.name + '.png';
+                document.body.appendChild(a); a.click(); a.remove();
+            } else if (act === 'copy') {
+                navigator.clipboard.writeText(item.data).then(
+                    () => toast('Kopieret'),
+                    () => toast('Kopi fejlede')
+                );
+            } else if (act === 'load') {
+                document.getElementById('qr-name').value = item.name;
+                document.getElementById('qr-data').value = item.data;
+                document.getElementById('qr-size').value = item.size;
+                document.getElementById('qr-ecl').value = item.ecl;
+                document.getElementById('qr-fg').value = item.fg;
+                document.getElementById('qr-bg').value = item.bg;
+                document.querySelector('.tab[data-tab="generator"]').click();
+                generate();
+            }
+        }
+
+        document.getElementById('btn-clear-all').addEventListener('click', () => {
+            if (!loadArchive().length) return;
+            if (!confirm('Slet ALLE gemte koder? Kan ikke fortrydes.')) return;
+            saveArchive([]);
+            renderGallery();
+            updateBadge();
+            toast('Arkiv tømt');
+        });
+
+        document.getElementById('btn-export').addEventListener('click', () => {
+            const arr = loadArchive();
+            if (!arr.length) { toast('Intet at eksportere'); return; }
+            const blob = new Blob([JSON.stringify(arr, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'qr-archive-' + new Date().toISOString().slice(0,10) + '.json';
+            document.body.appendChild(a); a.click(); a.remove();
+            URL.revokeObjectURL(url);
+        });
+
+        document.getElementById('import-file').addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = ev => {
+                try {
+                    const imported = JSON.parse(ev.target.result);
+                    if (!Array.isArray(imported)) throw 0;
+                    const current = loadArchive();
+                    const existing = new Set(current.map(x => x.id));
+                    const merged = current.concat(imported.filter(x => x.id && x.data && !existing.has(x.id)));
+                    saveArchive(merged);
+                    renderGallery();
+                    updateBadge();
+                    toast('Importeret: ' + (merged.length - current.length));
+                } catch (err) {
+                    toast('Fejl: ugyldig fil');
+                }
+                e.target.value = '';
+            };
+            reader.readAsText(file);
+        });
+
+        // ---------- Scanner ----------
+        let scanner = null;
+
+        function startScanner() {
+            if (scanner) return;
+            const reader = document.getElementById('reader');
+            reader.innerHTML = '';
+            scanner = new Html5Qrcode('reader');
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+            Html5Qrcode.getCameras().then(cams => {
+                if (!cams || !cams.length) { toast('Ingen kamera fundet'); scanner = null; return; }
+                const cam = cams.find(c => /back|rear|environment/i.test(c.label)) || cams[cams.length - 1];
+                scanner.start(
+                    cam.id,
+                    config,
+                    (text) => onScan(text),
+                    () => {}
+                ).then(() => {
+                    document.getElementById('btn-scan-start').style.display = 'none';
+                    document.getElementById('btn-scan-stop').style.display = 'inline-block';
+                }).catch(err => {
+                    toast('Kamera fejl');
+                    console.error(err);
+                    scanner = null;
+                });
+            }).catch(err => {
+                toast('Kamera ikke tilgængeligt');
+                console.error(err);
+                scanner = null;
+            });
+        }
+
+        function stopScanner() {
+            if (!scanner) return;
+            const s = scanner;
+            scanner = null;
+            s.stop().then(() => {
+                s.clear();
+                document.getElementById('btn-scan-start').style.display = 'inline-block';
+                document.getElementById('btn-scan-stop').style.display = 'none';
+            }).catch(() => {});
+        }
+
+        function onScan(text) {
+            if (lastScan === text) return;
+            lastScan = text;
+            const box = document.getElementById('scan-result');
+            const content = document.getElementById('scan-content');
+            content.innerHTML = '';
+            const isURL = /^https?:\/\//i.test(text);
+            if (isURL) {
+                const a = document.createElement('a');
+                a.href = text; a.textContent = text;
+                a.target = '_blank'; a.rel = 'noopener';
+                content.appendChild(a);
+            } else {
+                content.textContent = text;
+            }
+            box.classList.add('show');
+            try {
+                if (navigator.vibrate) navigator.vibrate(80);
+            } catch (e) {}
+            toast('Scannet');
+        }
+
+        document.getElementById('btn-scan-start').addEventListener('click', startScanner);
+        document.getElementById('btn-scan-stop').addEventListener('click', stopScanner);
+
+        document.getElementById('btn-scan-copy').addEventListener('click', () => {
+            if (!lastScan) return;
+            navigator.clipboard.writeText(lastScan).then(
+                () => toast('Kopieret'),
+                () => toast('Kopi fejlede')
+            );
+        });
+
+        document.getElementById('btn-scan-save').addEventListener('click', () => {
+            if (!lastScan) return;
+            document.getElementById('qr-name').value = 'Scannet ' + new Date().toLocaleString('da-DK');
+            document.getElementById('qr-data').value = lastScan;
+            document.querySelector('.tab[data-tab="generator"]').click();
+            const cfg = generate();
+            if (cfg) setTimeout(saveCurrent, 50);
+        });
+
+        // Stop camera if page hidden / left
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) stopScanner();
+        });
+        window.addEventListener('beforeunload', stopScanner);
+
+        // ---------- Init ----------
+        updateBadge();
+    })();
+    </script>
+</body>
+</html>
