@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="da">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1091,13 +1091,13 @@
     <!-- Activity hit overlay (shown when arriving via ?a= URL) -->
     <div class="activity-hit" id="activity-hit">
         <div class="activity-hit-box">
-            <div class="activity-hit-badge">✦ Aktivitet Scannet</div>
+            <div class="activity-hit-badge">✦ Activity Scanned</div>
             <div class="activity-hit-name" id="ah-name">—</div>
             <div class="activity-hit-desc" id="ah-desc"></div>
             <div class="activity-hit-target" id="ah-target"></div>
             <div class="activity-hit-stats" id="ah-stats"></div>
             <div class="activity-hit-actions">
-                <button class="btn" id="ah-close">Luk</button>
+                <button class="btn" id="ah-close">Close</button>
             </div>
         </div>
     </div>
@@ -1110,7 +1110,7 @@
 
         <div class="tabs">
             <button class="tab active" data-tab="generator">Generator</button>
-            <button class="tab" data-tab="saved">Arkiv <span id="saved-badge" style="opacity:0.6"></span></button>
+            <button class="tab" data-tab="saved">Archive <span id="saved-badge" style="opacity:0.6"></span></button>
             <button class="tab" data-tab="scanner">Scanner</button>
         </div>
 
@@ -1119,55 +1119,56 @@
             <div class="gen-wrap">
                 <div class="form" id="gen-form" data-mode="simple">
                     <div class="type-toggle">
-                        <button type="button" class="active" data-mode="simple">Simpel kode</button>
-                        <button type="button" data-mode="activity">Aktivitet</button>
+                        <button type="button" class="active" data-mode="simple">Simple code</button>
+                        <button type="button" data-mode="activity">Activity</button>
                     </div>
 
                     <div class="explainer">
                         <div class="explainer-col explain-simple" data-pick="simple">
-                            <div class="explainer-title"><span class="dot white"></span> Simpel</div>
+                            <div class="explainer-title"><span class="dot white"></span> Simple</div>
                             <div class="explainer-body">
-                                QR'en indeholder <strong>præcis det du skriver</strong> (tekst eller URL). Scanning åbner indholdet direkte.
-                                <div class="explainer-use"><span>Ingen tracking</span> · menu, Wi-Fi, vCard, direkte link</div>
+                                The QR contains <strong>exactly what you type</strong> (text or URL). Scanning opens the content directly.
+                                <div class="explainer-use"><span>No tracking</span> · menu, Wi-Fi, vCard, direct link</div>
                             </div>
                         </div>
                         <div class="explainer-col explain-activity" data-pick="activity">
-                            <div class="explainer-title"><span class="dot orange"></span> Aktivitet</div>
+                            <div class="explainer-title"><span class="dot orange"></span> Activity</div>
                             <div class="explainer-body">
-                                Dynamisk QR der peger tilbage til appen. <strong>Tæller scans</strong> — antal + seneste tidspunkt vises i arkivet.
-                                <div class="explainer-use"><span>Tracking</span> · event-zoner, plakater, kampagner</div>
+                                Dynamic QR that points back to the app. <strong>Counts scans</strong> — total and last scan shown in the archive.
+                                <div class="explainer-use"><span>Tracking</span> · event zones, posters, campaigns</div>
                             </div>
                         </div>
                     </div>
 
                     <div class="field">
-                        <label for="qr-name">Navn</label>
-                        <input type="text" id="qr-name" placeholder="f.eks. 'Zone 1 Start'">
+                        <label for="qr-name">Name</label>
+                        <input type="text" id="qr-name" placeholder="e.g. 'Zone 1 Start'">
                     </div>
 
                     <div class="field">
-                        <label for="qr-section">Sektion <span class="muted">(valgfri, vælg eller skriv ny)</span></label>
-                        <input type="text" id="qr-section" list="section-list" placeholder="f.eks. 'Event Day' eller 'Zone 1'" autocomplete="off">
+                        <label for="qr-section">Section <span class="muted">(optional, pick or type new)</span></label>
+                        <input type="text" id="qr-section" list="section-list" placeholder="e.g. 'Event Day' or 'Zone 1'" autocomplete="off">
+                    </div>
+
+                    <div class="field">
+                        <label for="qr-desc">What does this code do? <span class="muted">(shown on the code and in print)</span></label>
+                        <textarea id="qr-desc" placeholder="e.g. 'Opens the zone info screen for TeamConnect'"></textarea>
                     </div>
 
                     <!-- Simple mode -->
                     <div class="field only-simple">
-                        <label for="qr-data">Indhold <span class="muted">(tekst / URL)</span></label>
-                        <textarea id="qr-data" placeholder="https://eksempel.dk eller fri tekst"></textarea>
+                        <label for="qr-data">Content <span class="muted">(text / URL encoded in the QR)</span></label>
+                        <textarea id="qr-data" placeholder="https://example.com or free text"></textarea>
                     </div>
 
                     <!-- Activity mode -->
                     <div class="field only-activity">
-                        <label for="qr-desc">Beskrivelse <span class="muted">(valgfri)</span></label>
-                        <textarea id="qr-desc" placeholder="Vises når aktiviteten scannes"></textarea>
-                    </div>
-                    <div class="field only-activity">
-                        <label for="qr-target">Mål <span class="muted">(URL eller tekst der vises ved scan)</span></label>
-                        <textarea id="qr-target" placeholder="https://... eller instruktioner"></textarea>
+                        <label for="qr-target">Target <span class="muted">(URL or text shown when the activity is scanned)</span></label>
+                        <textarea id="qr-target" placeholder="https://... or instructions"></textarea>
                     </div>
                     <div class="row-2">
                         <div class="field">
-                            <label for="qr-size">Størrelse</label>
+                            <label for="qr-size">Size</label>
                             <select id="qr-size">
                                 <option value="200">200 px</option>
                                 <option value="300" selected>300 px</option>
@@ -1176,7 +1177,7 @@
                             </select>
                         </div>
                         <div class="field">
-                            <label for="qr-ecl">Fejlkorrigering</label>
+                            <label for="qr-ecl">Error correction</label>
                             <select id="qr-ecl">
                                 <option value="L">L (7%)</option>
                                 <option value="M" selected>M (15%)</option>
@@ -1187,19 +1188,19 @@
                     </div>
                     <div class="row-2">
                         <div class="field">
-                            <label for="qr-fg">Farve (forgrund)</label>
+                            <label for="qr-fg">Foreground color</label>
                             <input type="color" id="qr-fg" value="#000000">
                         </div>
                         <div class="field">
-                            <label for="qr-bg">Farve (baggrund)</label>
+                            <label for="qr-bg">Background color</label>
                             <input type="color" id="qr-bg" value="#ffffff">
                         </div>
                     </div>
                     <div class="btn-row">
-                        <button class="btn primary" id="btn-generate">Generer</button>
-                        <button class="btn" id="btn-save">Gem i arkiv</button>
+                        <button class="btn primary" id="btn-generate">Generate</button>
+                        <button class="btn" id="btn-save">Save to archive</button>
                         <button class="btn" id="btn-download">Download PNG</button>
-                        <button class="btn" id="btn-new" title="Ryd formular">Ny</button>
+                        <button class="btn" id="btn-new" title="Clear form">New</button>
                     </div>
                 </div>
 
@@ -1213,18 +1214,18 @@
         <!-- SAVED -->
         <div class="panel" id="panel-saved">
             <div class="toolbar">
-                <span class="count" id="saved-count">0 gemte</span>
+                <span class="count" id="saved-count">0 saved</span>
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                    <button class="btn" id="btn-new-section">+ Ny sektion</button>
-                    <button class="btn primary" id="btn-print" disabled>Print valgte</button>
-                    <button class="btn" id="btn-export">Eksporter JSON</button>
-                    <label class="btn" for="import-file" style="display:inline-block; text-align:center;">Importer JSON</label>
+                    <button class="btn" id="btn-new-section">+ New section</button>
+                    <button class="btn primary" id="btn-print" disabled>Print selected</button>
+                    <button class="btn" id="btn-export">Export JSON</button>
+                    <label class="btn" for="import-file" style="display:inline-block; text-align:center;">Import JSON</label>
                     <input type="file" id="import-file" accept="application/json" style="display:none">
-                    <button class="btn danger" id="btn-clear-all">Slet alle</button>
+                    <button class="btn danger" id="btn-clear-all">Delete all</button>
                 </div>
             </div>
             <div class="gallery" id="gallery"></div>
-            <div class="empty" id="empty-msg" style="display:none;">Ingen gemte koder endnu — lav en på Generator-fanen</div>
+            <div class="empty" id="empty-msg" style="display:none;">No saved codes yet — create one on the Generator tab</div>
         </div>
 
         <!-- SCANNER -->
@@ -1236,11 +1237,11 @@
                     <button class="btn" id="btn-scan-stop" style="display:none;">Stop</button>
                 </div>
                 <div class="scan-result" id="scan-result">
-                    <div class="scan-label" id="scan-label">Seneste scan</div>
+                    <div class="scan-label" id="scan-label">Latest scan</div>
                     <div id="scan-content"></div>
                     <div class="btn-row" style="margin-top:10px;">
-                        <button class="btn" id="btn-scan-copy">Kopier</button>
-                        <button class="btn" id="btn-scan-save">Gem i arkiv</button>
+                        <button class="btn" id="btn-scan-copy">Copy</button>
+                        <button class="btn" id="btn-scan-save">Save to archive</button>
                     </div>
                 </div>
             </div>
@@ -1251,30 +1252,30 @@
     <div class="print-setup" id="print-setup">
         <div class="print-setup-box">
             <h3>Print / PDF</h3>
-            <div class="sub" id="print-count-sub">0 koder valgt</div>
+            <div class="sub" id="print-count-sub">0 codes selected</div>
             <div class="field">
-                <label for="print-title">Titel</label>
+                <label for="print-title">Title</label>
                 <input type="text" id="print-title" placeholder="QR Codes">
             </div>
             <div class="field">
-                <label for="print-subtitle">Undertitel <span class="muted">(valgfri)</span></label>
+                <label for="print-subtitle">Subtitle <span class="muted">(optional)</span></label>
                 <input type="text" id="print-subtitle" placeholder="Event Day · 2026">
             </div>
             <div class="field">
-                <label for="print-per-page">Koder per side</label>
+                <label for="print-per-page">Codes per page</label>
                 <select id="print-per-page">
-                    <option value="1">1 (meget stor)</option>
-                    <option value="2">2 (stor)</option>
-                    <option value="4" selected>4 (standard)</option>
-                    <option value="6">6 (mindre)</option>
-                    <option value="9">9 (små)</option>
+                    <option value="1" selected>1 (very large)</option>
+                    <option value="2">2 (large)</option>
+                    <option value="4">4 (standard)</option>
+                    <option value="6">6 (smaller)</option>
+                    <option value="9">9 (small)</option>
                 </select>
             </div>
-            <label class="check-row"><input type="checkbox" id="print-include-desc" checked> Inkluder navn, beskrivelse og mål</label>
-            <label class="check-row"><input type="checkbox" id="print-include-explainer" checked> Inkluder explainer på forsiden</label>
+            <label class="check-row"><input type="checkbox" id="print-include-desc" checked> Include description and target under each code</label>
+            <label class="check-row"><input type="checkbox" id="print-include-explainer" checked> Include explainer on cover page</label>
             <div class="btn-row" style="margin-top: 18px; justify-content: flex-end;">
-                <button class="btn" id="btn-print-cancel">Annuller</button>
-                <button class="btn primary" id="btn-print-do">Åbn print dialog</button>
+                <button class="btn" id="btn-print-cancel">Cancel</button>
+                <button class="btn primary" id="btn-print-do">Open print dialog</button>
             </div>
         </div>
     </div>
@@ -1285,11 +1286,11 @@
     <!-- Prompt modal -->
     <div class="modal" id="prompt-modal">
         <div class="modal-box">
-            <h3 id="prompt-title">Indtast</h3>
+            <h3 id="prompt-title">Enter</h3>
             <div class="modal-msg" id="prompt-message"></div>
             <input type="text" id="prompt-input" autocomplete="off">
             <div class="modal-actions">
-                <button class="btn" id="prompt-cancel">Annuller</button>
+                <button class="btn" id="prompt-cancel">Cancel</button>
                 <button class="btn primary" id="prompt-ok">OK</button>
             </div>
         </div>
@@ -1298,11 +1299,11 @@
     <!-- Confirm modal -->
     <div class="modal" id="confirm-modal">
         <div class="modal-box">
-            <h3 id="confirm-title">Bekræft</h3>
+            <h3 id="confirm-title">Confirm</h3>
             <div class="modal-msg" id="confirm-message"></div>
             <div class="modal-actions">
-                <button class="btn" id="confirm-cancel">Annuller</button>
-                <button class="btn primary" id="confirm-ok">Bekræft</button>
+                <button class="btn" id="confirm-cancel">Cancel</button>
+                <button class="btn primary" id="confirm-ok">Confirm</button>
             </div>
         </div>
     </div>
@@ -1494,10 +1495,10 @@
             const d = new Date(iso);
             const now = new Date();
             const ms = now - d;
-            if (ms < 60000) return 'lige nu';
-            if (ms < 3600000) return Math.floor(ms/60000) + ' min siden';
-            if (ms < 86400000) return Math.floor(ms/3600000) + ' t siden';
-            return d.toLocaleDateString('da-DK') + ' ' + d.toLocaleTimeString('da-DK', {hour:'2-digit',minute:'2-digit'});
+            if (ms < 60000) return 'just now';
+            if (ms < 3600000) return Math.floor(ms/60000) + ' min ago';
+            if (ms < 86400000) return Math.floor(ms/3600000) + ' h ago';
+            return d.toLocaleDateString('en-GB') + ' ' + d.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
         }
 
         // ---------- Tabs ----------
@@ -1564,12 +1565,12 @@
             const cfg = readForm();
             let textToEncode;
             if (cfg.mode === 'activity') {
-                if (!cfg.name && !cfg.target) { toast('Navn eller mål påkrævet'); return null; }
+                if (!cfg.name && !cfg.target) { toast('Name or target required'); return null; }
                 const id = editingId || newId();
                 textToEncode = buildActivityUrl(id, cfg.target);
                 currentMeta = { type: 'activity', id, ...cfg, data: textToEncode };
             } else {
-                if (!cfg.data) { toast('Indtast indhold først'); return null; }
+                if (!cfg.data) { toast('Enter content first'); return null; }
                 textToEncode = cfg.data;
                 currentMeta = { type: 'simple', id: editingId || newId(), ...cfg };
             }
@@ -1598,9 +1599,9 @@
         });
 
         document.getElementById('btn-download').addEventListener('click', () => {
-            if (!currentQR) { toast('Generer først'); return; }
+            if (!currentQR) { toast('Generate first'); return; }
             const url = getPreviewDataURL();
-            if (!url) { toast('Kunne ikke hente billede'); return; }
+            if (!url) { toast('Could not retrieve image'); return; }
             const a = document.createElement('a');
             a.href = url;
             a.download = (currentMeta.name || 'qrcode') + '.png';
@@ -1608,30 +1609,27 @@
         });
 
         document.getElementById('btn-save').addEventListener('click', () => {
-            if (!currentQR) {
-                if (!generate()) return;
-                setTimeout(saveCurrent, 50);
-                return;
-            }
-            saveCurrent();
+            // Always regenerate first so currentMeta + preview reflect the latest form edits.
+            if (!generate()) return;
+            setTimeout(saveCurrent, 50);
         });
 
         document.getElementById('btn-new').addEventListener('click', () => {
             clearForm();
-            toast('Ny');
+            toast('New');
         });
 
         async function saveCurrent() {
-            if (!currentMeta) { toast('Generer først'); return; }
+            if (!currentMeta) { toast('Generate first'); return; }
             const image = getPreviewDataURL();
-            if (!image) { toast('Kunne ikke hente billede'); return; }
+            if (!image) { toast('Could not retrieve image'); return; }
             const arr = loadArchive();
             const existingIdx = arr.findIndex(x => x.id === currentMeta.id);
 
             const baseEntry = {
                 id: currentMeta.id,
                 type: currentMeta.type,
-                name: currentMeta.name || (currentMeta.type === 'activity' ? 'Aktivitet' : currentMeta.data.slice(0, 30)),
+                name: currentMeta.name || (currentMeta.type === 'activity' ? 'Activity' : currentMeta.data.slice(0, 30)),
                 section: currentMeta.section || '',
                 data: currentMeta.data,
                 description: currentMeta.description || '',
@@ -1649,7 +1647,7 @@
                 baseEntry.scanCount = prev.scanCount || 0;
                 baseEntry.lastScan = prev.lastScan || null;
                 arr[existingIdx] = baseEntry;
-                toast('Opdateret');
+                toast('Updated');
             } else {
                 if (currentMeta.type === 'activity') {
                     baseEntry.scans = [];
@@ -1658,7 +1656,7 @@
                 }
                 arr.unshift(baseEntry);
                 editingId = baseEntry.id;
-                toast('Gemt i arkiv');
+                toast('Saved');
             }
             saveArchive(arr);
             updateBadge();
@@ -1673,7 +1671,7 @@
         }
         function saveArchive(arr) {
             try { localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); }
-            catch (e) { toast('Fejl: lager fyldt'); }
+            catch (e) { toast('Error: storage full'); }
         }
         function updateBadge() {
             const n = loadArchive().length;
@@ -1727,7 +1725,7 @@
         function showPrompt(title, message, defaultValue, placeholder) {
             return new Promise(resolve => {
                 const overlay = document.getElementById('prompt-modal');
-                document.getElementById('prompt-title').textContent = title || 'Indtast';
+                document.getElementById('prompt-title').textContent = title || 'Enter';
                 document.getElementById('prompt-message').textContent = message || '';
                 const input = document.getElementById('prompt-input');
                 input.value = defaultValue || '';
@@ -1760,11 +1758,11 @@
         function showConfirm(title, message, okLabel) {
             return new Promise(resolve => {
                 const overlay = document.getElementById('confirm-modal');
-                document.getElementById('confirm-title').textContent = title || 'Bekræft';
+                document.getElementById('confirm-title').textContent = title || 'Confirm';
                 document.getElementById('confirm-message').textContent = message || '';
                 const ok = document.getElementById('confirm-ok');
                 const cancel = document.getElementById('confirm-cancel');
-                ok.textContent = okLabel || 'Bekræft';
+                ok.textContent = okLabel || 'Confirm';
                 overlay.classList.add('show');
                 setTimeout(() => ok.focus(), 30);
 
@@ -1795,10 +1793,10 @@
         function updatePrintBtn() {
             const btn = document.getElementById('btn-print');
             if (selected.size) {
-                btn.textContent = 'Print valgte (' + selected.size + ')';
+                btn.textContent = 'Print selected (' + selected.size + ')';
                 btn.disabled = false;
             } else {
-                btn.textContent = 'Print valgte';
+                btn.textContent = 'Print selected';
                 btn.disabled = true;
             }
         }
@@ -1811,8 +1809,8 @@
             card.dataset.cardId = item.id;
 
             let html = '';
-            html += `<label class="card-check" title="Vælg til print"><input type="checkbox" ${isSelected ? 'checked' : ''}><span class="checkmark"></span></label>`;
-            if (isAct) html += '<div class="card-badge">Aktivitet</div>';
+            html += `<label class="card-check" title="Select for print"><input type="checkbox" ${isSelected ? 'checked' : ''}><span class="checkmark"></span></label>`;
+            if (isAct) html += '<div class="card-badge">Activity</div>';
             html += `<div class="card-qr"><img src="${item.image}" alt=""></div>`;
             html += `<div class="card-name"></div>`;
             html += `<div class="card-data"></div>`;
@@ -1820,24 +1818,23 @@
                 html += `
                     <div class="card-stats">
                         <span class="scans">${item.scanCount || 0} scan${(item.scanCount || 0) === 1 ? '' : 's'}</span>
-                        <span class="last">${item.lastScan ? formatDate(item.lastScan) : 'Ingen endnu'}</span>
+                        <span class="last">${item.lastScan ? formatDate(item.lastScan) : 'None yet'}</span>
                     </div>`;
             }
             html += `
                 <div class="card-actions">
-                    <button class="icon-btn" data-act="load">Rediger</button>
-                    <button class="icon-btn" data-act="move">Flyt</button>
+                    <button class="icon-btn" data-act="load">Edit</button>
+                    <button class="icon-btn" data-act="move">Move</button>
                     <button class="icon-btn" data-act="dl">PNG</button>
                     <button class="icon-btn" data-act="copy">Copy</button>
-                    ${isAct ? '<button class="icon-btn" data-act="reset">Nulstil</button>' : ''}
-                    <button class="icon-btn del" data-act="del">Slet</button>
+                    ${isAct ? '<button class="icon-btn" data-act="reset">Reset</button>' : ''}
+                    <button class="icon-btn del" data-act="del">Delete</button>
                 </div>`;
             card.innerHTML = html;
 
             card.querySelector('.card-name').textContent = item.name;
-            card.querySelector('.card-data').textContent = isAct
-                ? (item.description || item.target || '—')
-                : item.data;
+            card.querySelector('.card-data').textContent = item.description
+                || (isAct ? (item.target || '—') : item.data);
             card.querySelectorAll('[data-act]').forEach(b => {
                 b.addEventListener('click', () => handleCard(b.dataset.act, item));
             });
@@ -1872,7 +1869,7 @@
             if (trimmed) { addDeclaredSection(trimmed); remoteSectionAdd(trimmed); }
             remoteUpsert(it);
             renderGallery();
-            toast(trimmed ? 'Flyttet til ' + trimmed : 'Flyttet ud');
+            toast(trimmed ? 'Moved to ' + trimmed : 'Moved out');
         }
 
         function renderGallery() {
@@ -1881,14 +1878,14 @@
             const empty = document.getElementById('empty-msg');
             const declared = loadDeclaredSections();
             document.getElementById('saved-count').textContent =
-                arr.length + ' gemt' + (arr.length === 1 ? '' : 'e');
+                arr.length + ' saved';
             wrap.innerHTML = '';
             if (!arr.length && !declared.length) { empty.style.display = 'block'; return; }
             empty.style.display = 'none';
 
             // Group by section (preserve first-seen order), include declared empty sections
             const groups = new Map();
-            const DEFAULT = 'Uden sektion';
+            const DEFAULT = 'No section';
             declared.forEach(s => { if (!groups.has(s)) groups.set(s, []); });
             arr.forEach(item => {
                 const sec = (item.section || '').trim() || DEFAULT;
@@ -1919,8 +1916,8 @@
                         <span class="section-name">${escapeHtml(section)}</span>
                         <span class="section-count">${items.length}</span>
                         ${activityCount > 0 ? `<span class="section-count" style="color:#ff9955;background:rgba(255,102,0,0.1)">${totalScans} scans</span>` : ''}
-                        ${!isDefault ? '<button class="section-edit" data-sec-act="rename" title="Omdøb sektion">✎</button>' : ''}
-                        ${!isDefault && items.length === 0 ? '<button class="section-edit" data-sec-act="delsec" title="Slet tom sektion">✕</button>' : ''}
+                        ${!isDefault ? '<button class="section-edit" data-sec-act="rename" title="Rename section">✎</button>' : ''}
+                        ${!isDefault && items.length === 0 ? '<button class="section-edit" data-sec-act="delsec" title="Delete empty section">✕</button>' : ''}
                     </div>
                     <span class="section-toggle">▾</span>`;
                 header.addEventListener('click', (e) => {
@@ -1964,7 +1961,7 @@
                 if (items.length === 0) {
                     const es = document.createElement('div');
                     es.className = 'section-empty';
-                    es.textContent = 'Tom sektion — træk kort hertil eller opret nye';
+                    es.textContent = 'Empty section — drag cards here or create new ones';
                     grid.appendChild(es);
                 } else {
                     items.forEach(item => grid.appendChild(buildCard(item)));
@@ -1989,7 +1986,7 @@
         }
 
         async function renameSection(oldName) {
-            const newName = await showPrompt('Omdøb sektion', 'Nyt navn for "' + oldName + '":', oldName);
+            const newName = await showPrompt('Rename section', 'New name for "' + oldName + '":', oldName);
             if (newName === null) return;
             const trimmed = newName.trim();
             if (!trimmed || trimmed === oldName) return;
@@ -2001,30 +1998,30 @@
             if (col.has(oldName)) { col.delete(oldName); col.add(trimmed); saveCollapsed(col); }
             remoteSectionRename(oldName, trimmed);
             renderGallery();
-            toast('Omdøbt');
+            toast('Renamed');
         }
 
         async function deleteEmptySection(name) {
-            if (!await showConfirm('Slet sektion', 'Slet tom sektion "' + name + '"?', 'Slet')) return;
+            if (!await showConfirm('Delete section', 'Delete empty section "' + name + '"?', 'Delete')) return;
             removeDeclaredSection(name);
             remoteSectionDelete(name);
             renderGallery();
-            toast('Sektion slettet');
+            toast('Section deleted');
         }
 
         async function handleCard(act, item) {
             if (act === 'del') {
-                if (!await showConfirm('Slet kode', 'Slet "' + item.name + '"? Kan ikke fortrydes.', 'Slet')) return;
+                if (!await showConfirm('Delete code', 'Delete "' + item.name + '"? Cannot be undone.', 'Delete')) return;
                 saveArchive(loadArchive().filter(x => x.id !== item.id));
                 selected.delete(item.id);
                 remoteDelete(item.id);
                 renderGallery(); updateBadge(); updatePrintBtn();
-                toast('Slettet');
+                toast('Deleted');
             } else if (act === 'move') {
                 const current = item.section || '';
                 const all = getAllSectionNames();
-                const hint = all.length ? 'Eksisterende: ' + all.join(', ') + '\n\n(Lad blank for "Uden sektion")' : '(Lad blank for "Uden sektion")';
-                const next = await showPrompt('Flyt til sektion', hint, current, 'Indtast sektionsnavn…');
+                const hint = all.length ? 'Existing: ' + all.join(', ') + '\n\n(Leave blank for "No section")' : '(Leave blank for "No section")';
+                const next = await showPrompt('Move to section', hint, current, 'Enter section name…');
                 if (next === null) return;
                 const trimmed = next.trim();
                 const arr = loadArchive();
@@ -2032,23 +2029,23 @@
                 if (it) { it.section = trimmed; saveArchive(arr); }
                 if (trimmed) addDeclaredSection(trimmed);
                 renderGallery();
-                toast(trimmed ? 'Flyttet til ' + trimmed : 'Flyttet');
+                toast(trimmed ? 'Moved to ' + trimmed : 'Moved');
             } else if (act === 'reset') {
-                if (!await showConfirm('Nulstil tæller', 'Nulstil tæller for "' + item.name + '"?', 'Nulstil')) return;
+                if (!await showConfirm('Reset counter', 'Reset counter for "' + item.name + '"?', 'Reset')) return;
                 const arr = loadArchive();
                 const it = arr.find(x => x.id === item.id);
                 if (it) { it.scans = []; it.scanCount = 0; it.lastScan = null; saveArchive(arr); }
                 remoteResetScans(item.id);
                 renderGallery();
-                toast('Tæller nulstillet');
+                toast('Counter reset');
             } else if (act === 'dl') {
                 const a = document.createElement('a');
                 a.href = item.image; a.download = item.name + '.png';
                 document.body.appendChild(a); a.click(); a.remove();
             } else if (act === 'copy') {
                 navigator.clipboard.writeText(item.data).then(
-                    () => toast('Kopieret'),
-                    () => toast('Kopi fejlede')
+                    () => toast('Copied'),
+                    () => toast('Copy failed')
                 );
             } else if (act === 'load') {
                 const isAct = item.type === 'activity';
@@ -2072,21 +2069,21 @@
 
         document.getElementById('btn-clear-all').addEventListener('click', async () => {
             if (!loadArchive().length) return;
-            if (!await showConfirm('Slet alt', 'Slet ALLE gemte koder (lokalt og i Supabase)? Kan ikke fortrydes.', 'Slet alle')) return;
+            if (!await showConfirm('Delete all', 'Delete ALL saved codes (locally and in Supabase)? Cannot be undone.', 'Delete all')) return;
             saveArchive([]); selected.clear();
             remoteClearAll();
             renderGallery(); updateBadge(); updatePrintBtn();
-            toast('Arkiv tømt');
+            toast('Archive cleared');
         });
 
         document.getElementById('btn-export').addEventListener('click', () => {
             const arr = loadArchive();
-            if (!arr.length) { toast('Intet at eksportere'); return; }
+            if (!arr.length) { toast('Nothing to export'); return; }
             const blob = new Blob([JSON.stringify(arr, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'qr-archive-' + new Date().toISOString().slice(0,10) + '.json';
+            a.download = 'qr-archive-' + new Date().toISOString().slice(0, 10) + '.json';
             document.body.appendChild(a); a.click(); a.remove();
             URL.revokeObjectURL(url);
         });
@@ -2103,8 +2100,8 @@
                     const existing = new Set(current.map(x => x.id));
                     const merged = current.concat(imported.filter(x => x.id && x.data && !existing.has(x.id)));
                     saveArchive(merged); renderGallery(); updateBadge();
-                    toast('Importeret: ' + (merged.length - current.length));
-                } catch (err) { toast('Fejl: ugyldig fil'); }
+                    toast('Imported: ' + (merged.length - current.length));
+                } catch (err) { toast('Error: invalid file'); }
                 e.target.value = '';
             };
             reader.readAsText(file);
@@ -2112,7 +2109,7 @@
 
         // ---------- Sections + Print ----------
         document.getElementById('btn-new-section').addEventListener('click', async () => {
-            const name = await showPrompt('Ny sektion', 'Indtast navn på sektion:', '', 'f.eks. Event Day');
+            const name = await showPrompt('New section', 'Enter a section name:', '', 'e.g. Event Day');
             if (!name) return;
             const trimmed = name.trim();
             if (!trimmed) return;
@@ -2120,14 +2117,25 @@
             remoteSectionAdd(trimmed);
             document.querySelector('.tab[data-tab="saved"]').click();
             renderGallery();
-            toast('Sektion oprettet');
+            toast('Section created');
         });
 
         document.getElementById('btn-print').addEventListener('click', () => {
             if (!selected.size) return;
             const n = selected.size;
             document.getElementById('print-count-sub').textContent =
-                n + ' kode' + (n === 1 ? '' : 'r') + ' valgt';
+                n + ' code' + (n === 1 ? '' : 's') + ' selected';
+            // Pre-fill title with the QR's own name when one is selected,
+            // or the common section name when several in one section are selected.
+            const arr = loadArchive();
+            const items = arr.filter(x => selected.has(x.id));
+            const titleEl = document.getElementById('print-title');
+            if (items.length === 1) {
+                titleEl.value = items[0].name || 'QR Code';
+            } else if (items.length > 1) {
+                const sections = [...new Set(items.map(x => (x.section || '').trim()).filter(Boolean))];
+                titleEl.value = sections.length === 1 ? sections[0] : 'QR Codes';
+            }
             document.getElementById('print-setup').classList.add('show');
         });
         document.getElementById('btn-print-cancel').addEventListener('click', () => {
@@ -2136,7 +2144,7 @@
         document.getElementById('btn-print-do').addEventListener('click', () => {
             const arr = loadArchive();
             const items = arr.filter(x => selected.has(x.id));
-            if (!items.length) { toast('Ingen valgt'); return; }
+            if (!items.length) { toast('None selected'); return; }
             const perPage = parseInt(document.getElementById('print-per-page').value, 10);
             const title = document.getElementById('print-title').value.trim();
             const subtitle = document.getElementById('print-subtitle').value.trim();
@@ -2163,10 +2171,10 @@
                 const ex = document.createElement('div');
                 ex.className = 'print-explainer';
                 ex.innerHTML = `
-                    <div class="print-expl-title">Sådan virker koderne</div>
+                    <div class="print-expl-title">How these codes work</div>
                     <div class="print-expl-grid">
-                        <div><span class="dot white"></span><strong>Simpel kode</strong> — QR'en indeholder præcis det skrevne indhold (tekst eller URL). Scanning åbner indholdet direkte. Ingen tracking.</div>
-                        <div><span class="dot orange"></span><strong>Aktivitet</strong> — Dynamisk QR der peger tilbage til en tracking-side. Antal scans og seneste tidspunkt registreres. Orange ramme markerer aktiviteter.</div>
+                        <div><span class="dot white"></span><strong>Simple code</strong> — The QR contains exactly the text or URL written below it. Scanning opens the content directly. No tracking.</div>
+                        <div><span class="dot orange"></span><strong>Activity</strong> — Dynamic QR that points to a tracking page. Scan count and last-scan time are recorded. Orange border marks activities.</div>
                     </div>`;
                 view.appendChild(ex);
             }
@@ -2181,7 +2189,7 @@
                     cell.className = 'print-cell' + (isAct ? ' is-activity' : '');
                     let html = `<div class="print-qr"><img src="${item.image}" alt=""></div>`;
                     html += `<div class="print-name">${escapeHtml(item.name || '')}</div>`;
-                    html += `<div class="print-type${isAct ? '' : ' simple'}">${isAct ? 'Aktivitet' : 'Simpel'}</div>`;
+                    html += `<div class="print-type${isAct ? '' : ' simple'}">${isAct ? 'Activity' : 'Simple'}</div>`;
                     if (includeDesc) {
                         if (item.description) html += `<div class="print-desc">${escapeHtml(item.description)}</div>`;
                         if (isAct && item.target) html += `<div class="print-target">${escapeHtml(item.target)}</div>`;
@@ -2240,13 +2248,13 @@
             const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
             Html5Qrcode.getCameras().then(cams => {
-                if (!cams || !cams.length) { toast('Ingen kamera fundet'); scanner = null; return; }
+                if (!cams || !cams.length) { toast('No camera found'); scanner = null; return; }
                 const cam = cams.find(c => /back|rear|environment/i.test(c.label)) || cams[cams.length - 1];
                 scanner.start(cam.id, config, (text) => onScan(text), () => {}).then(() => {
                     document.getElementById('btn-scan-start').style.display = 'none';
                     document.getElementById('btn-scan-stop').style.display = 'inline-block';
-                }).catch(err => { toast('Kamera fejl'); console.error(err); scanner = null; });
-            }).catch(err => { toast('Kamera ikke tilgængeligt'); console.error(err); scanner = null; });
+                }).catch(err => { toast('Camera error'); console.error(err); scanner = null; });
+            }).catch(err => { toast('Camera not available'); console.error(err); scanner = null; });
         }
 
         function stopScanner() {
@@ -2273,15 +2281,15 @@
             const activity = actId ? await logActivityScan(actId, 'scanner') : null;
             if (activity) {
                 box.classList.add('activity');
-                label.textContent = 'Aktivitet scannet · ' + activity.scanCount + ' total';
+                label.textContent = 'Activity scanned · ' + activity.scanCount + ' total';
                 const h = document.createElement('div');
                 h.innerHTML = `<strong style="font-size:15px">${activity.name}</strong>
                                ${activity.description ? '<div style="margin-top:4px;opacity:0.7">' + activity.description + '</div>' : ''}
                                ${activity.target ? '<div style="margin-top:8px;font-size:11px;opacity:0.5">→ ' + activity.target + '</div>' : ''}`;
                 content.appendChild(h);
-                toast('Aktivitet +1');
+                toast('Activity +1');
             } else {
-                label.textContent = 'Seneste scan';
+                label.textContent = 'Latest scan';
                 const isURL = /^https?:\/\//i.test(text);
                 if (isURL) {
                     const a = document.createElement('a');
@@ -2290,7 +2298,7 @@
                 } else {
                     content.textContent = text;
                 }
-                toast('Scannet');
+                toast('Scanned');
             }
             box.classList.add('show');
             try { if (navigator.vibrate) navigator.vibrate(80); } catch (e) {}
@@ -2302,7 +2310,7 @@
         document.getElementById('btn-scan-copy').addEventListener('click', () => {
             if (!lastScan) return;
             navigator.clipboard.writeText(lastScan).then(
-                () => toast('Kopieret'), () => toast('Kopi fejlede'));
+                () => toast('Copied'), () => toast('Copy failed'));
         });
 
         document.getElementById('btn-scan-save').addEventListener('click', () => {
@@ -2310,7 +2318,7 @@
             form.dataset.mode = 'simple';
             document.querySelectorAll('.type-toggle button').forEach(b =>
                 b.classList.toggle('active', b.dataset.mode === 'simple'));
-            document.getElementById('qr-name').value = 'Scannet ' + new Date().toLocaleString('da-DK');
+            document.getElementById('qr-name').value = 'Scanned ' + new Date().toLocaleString('en-GB');
             document.getElementById('qr-data').value = lastScan;
             editingId = null;
             document.querySelector('.tab[data-tab="generator"]').click();
@@ -2351,7 +2359,7 @@
                 targetValue = a.target;
                 statsEl.innerHTML = `<span class="num">${a.scanCount}</span> total scan${a.scanCount === 1 ? '' : 's'}`;
             } else {
-                nameEl.textContent = to ? 'Aktivitet' : 'Ukendt aktivitet';
+                nameEl.textContent = to ? 'Activity' : 'Unknown activity';
                 descEl.textContent = to ? '' : 'ID: ' + id;
                 targetValue = to;
                 statsEl.innerHTML = '';
@@ -2362,7 +2370,7 @@
                 if (/^https?:\/\//i.test(targetValue)) {
                     const a = document.createElement('a');
                     a.href = targetValue; a.className = 'btn primary';
-                    a.textContent = 'Åbn →'; a.target = '_blank'; a.rel = 'noopener';
+                    a.textContent = 'Open →'; a.target = '_blank'; a.rel = 'noopener';
                     targetEl.appendChild(a);
                 } else {
                     const div = document.createElement('div');
