@@ -786,31 +786,40 @@
                 color: #000 !important;
                 padding: 0 !important;
                 margin: 0 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
-            @page { size: A4; margin: 15mm; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            @page { size: A4; margin: 12mm; }
+
             .print-header {
-                font-size: 22pt;
-                font-weight: bold;
+                background: #ff6600 !important;
+                color: #fff !important;
+                padding: 10mm 8mm;
+                border-radius: 3mm;
                 text-align: center;
-                padding-bottom: 6mm;
-                border-bottom: 2px solid #ff6600;
-                margin-bottom: 8mm;
-                color: #000;
+                font-size: 26pt;
+                font-weight: 900;
                 letter-spacing: 2pt;
                 text-transform: uppercase;
+                margin-bottom: 8mm;
+                page-break-after: avoid;
+                break-after: avoid;
+                line-height: 1.1;
             }
             .print-header .sub {
-                font-size: 10pt;
-                font-weight: normal;
-                letter-spacing: 1pt;
-                color: #666;
-                margin-top: 2mm;
+                font-size: 11pt;
+                font-weight: 500;
+                letter-spacing: 2pt;
+                color: rgba(255,255,255,0.9);
+                margin-top: 4mm;
                 text-transform: none;
             }
+
             .print-page {
                 page-break-after: always;
                 display: grid;
-                gap: 8mm;
+                gap: 6mm;
             }
             .print-page:last-child { page-break-after: auto; }
             .print-page[data-count="1"] { grid-template-columns: 1fr; }
@@ -821,7 +830,7 @@
             .print-cell {
                 text-align: center;
                 padding: 5mm;
-                border: 1pt solid #ccc;
+                border: 1pt solid #ddd;
                 border-radius: 3mm;
                 break-inside: avoid;
                 display: flex;
@@ -840,8 +849,8 @@
                 align-items: center;
                 justify-content: center;
             }
-            .print-page[data-count="1"] .print-qr { max-width: 120mm; }
-            .print-page[data-count="2"] .print-qr { max-width: 90mm; }
+            .print-page[data-count="1"] .print-qr { max-width: 110mm; }
+            .print-page[data-count="2"] .print-qr { max-width: 85mm; }
             .print-page[data-count="9"] .print-qr { max-width: 45mm; }
             .print-qr img {
                 max-width: 100%;
@@ -850,80 +859,59 @@
                 image-rendering: crisp-edges;
             }
             .print-name {
-                font-size: 12pt;
+                font-size: 14pt;
                 font-weight: bold;
-                margin-top: 3mm;
+                margin-top: 4mm;
                 color: #000;
+                letter-spacing: 0.5pt;
             }
             .print-type {
                 display: inline-block;
-                padding: 0.5mm 2mm;
-                background: #ff6600;
-                color: #fff;
-                font-size: 7pt;
-                letter-spacing: 1pt;
+                padding: 1mm 4mm;
+                background: #ff6600 !important;
+                color: #fff !important;
+                font-size: 8pt;
+                letter-spacing: 1.5pt;
                 border-radius: 2mm;
                 margin-top: 2mm;
                 text-transform: uppercase;
+                font-weight: bold;
             }
-            .print-type.simple { background: #333; }
+            .print-type.simple { background: #333 !important; }
+
+            /* Big orange description block, centered */
             .print-desc {
-                font-size: 9pt;
-                color: #333;
-                margin-top: 2mm;
-                line-height: 1.4;
+                background: #ff6600 !important;
+                color: #fff !important;
+                padding: 8mm 6mm;
+                border-radius: 3mm;
+                margin-top: 6mm;
+                font-size: 20pt;
+                font-weight: 600;
+                line-height: 1.35;
+                text-align: center;
                 max-width: 100%;
+                width: 100%;
+                break-inside: avoid;
             }
             .print-target {
-                font-size: 8pt;
+                font-size: 9pt;
                 color: #555;
-                margin-top: 2mm;
+                margin-top: 4mm;
                 word-break: break-all;
                 font-family: 'Courier New', monospace;
                 max-width: 100%;
             }
-            .print-page[data-count="9"] .print-name { font-size: 9pt; margin-top: 2mm; }
+
+            /* Compact sizes */
+            .print-page[data-count="4"] .print-desc { font-size: 13pt; padding: 5mm 4mm; margin-top: 4mm; }
+            .print-page[data-count="6"] .print-desc { font-size: 11pt; padding: 4mm 3mm; margin-top: 3mm; }
+            .print-page[data-count="6"] .print-target { display: none; }
+            .print-page[data-count="9"] .print-name { font-size: 10pt; margin-top: 2mm; }
             .print-page[data-count="9"] .print-desc,
             .print-page[data-count="9"] .print-target,
             .print-page[data-count="9"] .print-type { display: none; }
-            .print-page[data-count="6"] .print-target { display: none; }
-
-            .print-explainer {
-                border: 1pt solid #ff6600;
-                border-radius: 3mm;
-                padding: 5mm;
-                margin-bottom: 8mm;
-                break-inside: avoid;
-            }
-            .print-expl-title {
-                font-size: 11pt;
-                font-weight: bold;
-                color: #ff6600;
-                margin-bottom: 3mm;
-                letter-spacing: 1pt;
-                text-transform: uppercase;
-            }
-            .print-expl-grid {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 5mm;
-                font-size: 9pt;
-                color: #333;
-                line-height: 1.5;
-            }
-            .print-expl-grid strong { color: #000; }
-            .print-expl-grid .dot {
-                display: inline-block;
-                width: 8pt; height: 8pt;
-                border-radius: 50%;
-                margin-right: 4pt;
-                vertical-align: middle;
-            }
-            .print-expl-grid .dot.white {
-                background: #fff;
-                border: 1pt solid #000;
-            }
-            .print-expl-grid .dot.orange { background: #ff6600; }
+            .print-page[data-count="2"] .print-desc { font-size: 16pt; padding: 6mm 5mm; }
         }
 
         .empty {
@@ -1290,7 +1278,6 @@
                 </select>
             </div>
             <label class="check-row"><input type="checkbox" id="print-include-desc" checked> Include description and target under each code</label>
-            <label class="check-row"><input type="checkbox" id="print-include-explainer" checked> Include explainer on cover page</label>
             <div class="btn-row" style="margin-top: 18px; justify-content: flex-end;">
                 <button class="btn" id="btn-print-cancel">Cancel</button>
                 <button class="btn primary" id="btn-print-do">Open print dialog</button>
@@ -2167,13 +2154,12 @@
             const title = document.getElementById('print-title').value.trim();
             const subtitle = document.getElementById('print-subtitle').value.trim();
             const includeDesc = document.getElementById('print-include-desc').checked;
-            const includeExplainer = document.getElementById('print-include-explainer').checked;
-            renderPrintView(items, perPage, title, subtitle, includeDesc, includeExplainer);
+            renderPrintView(items, perPage, title, subtitle, includeDesc);
             document.getElementById('print-setup').classList.remove('show');
             setTimeout(() => window.print(), 300);
         });
 
-        function renderPrintView(items, perPage, title, subtitle, includeDesc, includeExplainer) {
+        function renderPrintView(items, perPage, title, subtitle, includeDesc) {
             const view = document.getElementById('print-view');
             view.innerHTML = '';
 
@@ -2183,18 +2169,6 @@
                 header.innerHTML = escapeHtml(title) +
                     (subtitle ? '<div class="sub">' + escapeHtml(subtitle) + '</div>' : '');
                 view.appendChild(header);
-            }
-
-            if (includeExplainer) {
-                const ex = document.createElement('div');
-                ex.className = 'print-explainer';
-                ex.innerHTML = `
-                    <div class="print-expl-title">How these codes work</div>
-                    <div class="print-expl-grid">
-                        <div><span class="dot white"></span><strong>Simple code</strong> — The QR contains exactly the text or URL written below it. Scanning opens the content directly. No tracking.</div>
-                        <div><span class="dot orange"></span><strong>Activity</strong> — Dynamic QR that points to a tracking page. Scan count and last-scan time are recorded. Orange border marks activities.</div>
-                    </div>`;
-                view.appendChild(ex);
             }
 
             for (let i = 0; i < items.length; i += perPage) {
