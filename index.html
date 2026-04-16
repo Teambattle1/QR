@@ -13,6 +13,7 @@
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -1314,6 +1315,150 @@
     <script>
     (function () {
         const STORAGE_KEY = 'games_qr_archive_v1';
+        const DEVICE_KEY = 'games_qr_device_id';
+
+        // ---------- Supabase sync ----------
+        const SB_URL = 'https://ilbjytyukicbssqftmma.supabase.co';
+        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlsYmp5dHl1a2ljYnNzcWZ0bW1hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ4MzA0NjEsImV4cCI6MjA3MDQwNjQ2MX0.I_PWByMPcOYhWgeq9MxXgOo-NCZYfEuzYmo35XnBFAY';
+        let sb = null;
+        try {
+            if (window.supabase && window.supabase.createClient) {
+                sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false } });
+            }
+        } catch (e) { console.warn('Supabase init failed', e); }
+
+        function getDeviceId() {
+            let id = localStorage.getItem(DEVICE_KEY);
+            if (!id) {
+                id = 'dev_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+                localStorage.setItem(DEVICE_KEY, id);
+            }
+            return id;
+        }
+
+        function rowToEntry(r) {
+            return {
+                id: r.id, type: r.type, name: r.name || '',
+                section: r.section || '',
+                data: r.data, description: r.description || '', target: r.target || '',
+                size: r.size, ecl: r.ecl, fg: r.fg, bg: r.bg,
+                scanCount: r.scan_count || 0,
+                lastScan: r.last_scan,
+                created: r.created_at,
+                image: null,
+                scans: []
+            };
+        }
+
+        function entryToRow(e) {
+            return {
+                id: e.id, type: e.type, name: e.name || '',
+                section: e.section || '',
+                data: e.data, description: e.description || '', target: e.target || '',
+                size: e.size, ecl: e.ecl, fg: e.fg, bg: e.bg,
+                scan_count: e.scanCount || 0,
+                last_scan: e.lastScan || null,
+                device_id: getDeviceId()
+            };
+        }
+
+        // Regenerate QR image data URL (QRs aren't stored remotely to save space)
+        function regenerateImage(entry) {
+            try {
+                const tmp = document.createElement('div');
+                tmp.style.cssText = 'position:absolute;left:-99999px;top:-99999px;';
+                document.body.appendChild(tmp);
+                new QRCode(tmp, {
+                    text: entry.data,
+                    width: entry.size || 300, height: entry.size || 300,
+                    colorDark: entry.fg || '#000', colorLight: entry.bg || '#fff',
+                    correctLevel: (window.QRCode && QRCode.CorrectLevel && QRCode.CorrectLevel[entry.ecl]) || QRCode.CorrectLevel.M
+                });
+                const img = tmp.querySelector('img');
+                const canvas = tmp.querySelector('canvas');
+                const url = (canvas && canvas.toDataURL('image/png')) || (img && img.src) || null;
+                tmp.remove();
+                return url;
+            } catch (e) { return null; }
+        }
+
+        async function remotePull() {
+            if (!sb) return null;
+            try {
+                const [codes, sections] = await Promise.all([
+                    sb.from('qr_codes').select('*').order('created_at', { ascending: false }),
+                    sb.from('qr_sections').select('*').order('created_at', { ascending: true })
+                ]);
+                if (codes.error) { console.warn('pull codes', codes.error); return null; }
+                const entries = (codes.data || []).map(rowToEntry);
+                entries.forEach(e => { e.image = regenerateImage(e); });
+                return {
+                    codes: entries,
+                    sections: (sections.data || []).map(s => s.name)
+                };
+            } catch (e) { console.warn('remotePull error', e); return null; }
+        }
+
+        async function remoteUpsert(entry) {
+            if (!sb) return;
+            try {
+                const { error } = await sb.from('qr_codes').upsert(entryToRow(entry), { onConflict: 'id' });
+                if (error) console.warn('upsert error', error);
+            } catch (e) { console.warn('remoteUpsert', e); }
+        }
+
+        async function remoteDelete(id) {
+            if (!sb) return;
+            try { await sb.from('qr_codes').delete().eq('id', id); }
+            catch (e) { console.warn('remoteDelete', e); }
+        }
+
+        async function remoteScan(qrId, source) {
+            if (!sb) return null;
+            try {
+                const { data, error } = await sb.rpc('qr_log_scan', {
+                    p_qr_id: qrId, p_source: source || 'url', p_device_id: getDeviceId()
+                });
+                if (error) { console.warn('scan rpc', error); return null; }
+                return data;
+            } catch (e) { console.warn('remoteScan', e); return null; }
+        }
+
+        async function remoteResetScans(id) {
+            if (!sb) return;
+            try {
+                await sb.from('qr_scans').delete().eq('qr_id', id);
+                await sb.from('qr_codes').update({ scan_count: 0, last_scan: null }).eq('id', id);
+            } catch (e) { console.warn('remoteReset', e); }
+        }
+
+        async function remoteSectionAdd(name) {
+            if (!sb || !name) return;
+            try { await sb.from('qr_sections').upsert({ name }, { onConflict: 'name' }); }
+            catch (e) { console.warn('sectionAdd', e); }
+        }
+
+        async function remoteSectionDelete(name) {
+            if (!sb || !name) return;
+            try { await sb.from('qr_sections').delete().eq('name', name); }
+            catch (e) { console.warn('sectionDelete', e); }
+        }
+
+        async function remoteSectionRename(oldName, newName) {
+            if (!sb) return;
+            try {
+                await sb.from('qr_codes').update({ section: newName }).eq('section', oldName);
+                await sb.from('qr_sections').delete().eq('name', oldName);
+                await sb.from('qr_sections').upsert({ name: newName }, { onConflict: 'name' });
+            } catch (e) { console.warn('sectionRename', e); }
+        }
+
+        async function remoteClearAll() {
+            if (!sb) return;
+            try { await sb.from('qr_codes').delete().neq('id', ''); }
+            catch (e) { console.warn('remoteClearAll', e); }
+        }
+
         let lastScan = null;
         let currentQR = null;
         let currentMeta = null; // {type, id, data, name, description, target, size, ecl, fg, bg}
@@ -1476,7 +1621,7 @@
             toast('Ny');
         });
 
-        function saveCurrent() {
+        async function saveCurrent() {
             if (!currentMeta) { toast('Generer først'); return; }
             const image = getPreviewDataURL();
             if (!image) { toast('Kunne ikke hente billede'); return; }
@@ -1498,7 +1643,6 @@
             };
 
             if (existingIdx >= 0) {
-                // Preserve scan history
                 const prev = arr[existingIdx];
                 baseEntry.created = prev.created;
                 baseEntry.scans = prev.scans || [];
@@ -1518,6 +1662,8 @@
             }
             saveArchive(arr);
             updateBadge();
+            remoteUpsert(baseEntry);
+            if (baseEntry.section) remoteSectionAdd(baseEntry.section);
         }
 
         // ---------- Archive ----------
@@ -1723,7 +1869,8 @@
             if ((it.section || '') === trimmed) return;
             it.section = trimmed;
             saveArchive(arr);
-            if (trimmed) addDeclaredSection(trimmed);
+            if (trimmed) { addDeclaredSection(trimmed); remoteSectionAdd(trimmed); }
+            remoteUpsert(it);
             renderGallery();
             toast(trimmed ? 'Flyttet til ' + trimmed : 'Flyttet ud');
         }
@@ -1852,6 +1999,7 @@
             renameDeclaredSection(oldName, trimmed);
             const col = loadCollapsed();
             if (col.has(oldName)) { col.delete(oldName); col.add(trimmed); saveCollapsed(col); }
+            remoteSectionRename(oldName, trimmed);
             renderGallery();
             toast('Omdøbt');
         }
@@ -1859,6 +2007,7 @@
         async function deleteEmptySection(name) {
             if (!await showConfirm('Slet sektion', 'Slet tom sektion "' + name + '"?', 'Slet')) return;
             removeDeclaredSection(name);
+            remoteSectionDelete(name);
             renderGallery();
             toast('Sektion slettet');
         }
@@ -1868,6 +2017,7 @@
                 if (!await showConfirm('Slet kode', 'Slet "' + item.name + '"? Kan ikke fortrydes.', 'Slet')) return;
                 saveArchive(loadArchive().filter(x => x.id !== item.id));
                 selected.delete(item.id);
+                remoteDelete(item.id);
                 renderGallery(); updateBadge(); updatePrintBtn();
                 toast('Slettet');
             } else if (act === 'move') {
@@ -1888,6 +2038,7 @@
                 const arr = loadArchive();
                 const it = arr.find(x => x.id === item.id);
                 if (it) { it.scans = []; it.scanCount = 0; it.lastScan = null; saveArchive(arr); }
+                remoteResetScans(item.id);
                 renderGallery();
                 toast('Tæller nulstillet');
             } else if (act === 'dl') {
@@ -1921,8 +2072,9 @@
 
         document.getElementById('btn-clear-all').addEventListener('click', async () => {
             if (!loadArchive().length) return;
-            if (!await showConfirm('Slet alt', 'Slet ALLE gemte koder? Kan ikke fortrydes.', 'Slet alle')) return;
+            if (!await showConfirm('Slet alt', 'Slet ALLE gemte koder (lokalt og i Supabase)? Kan ikke fortrydes.', 'Slet alle')) return;
             saveArchive([]); selected.clear();
+            remoteClearAll();
             renderGallery(); updateBadge(); updatePrintBtn();
             toast('Arkiv tømt');
         });
@@ -1965,6 +2117,7 @@
             const trimmed = name.trim();
             if (!trimmed) return;
             addDeclaredSection(trimmed);
+            remoteSectionAdd(trimmed);
             document.querySelector('.tab[data-tab="saved"]').click();
             renderGallery();
             toast('Sektion oprettet');
@@ -2042,15 +2195,29 @@
         }
 
         // ---------- Scan tracking ----------
-        function logActivityScan(id, source) {
+        async function logActivityScan(id, source) {
+            // Optimistic local increment
             const arr = loadArchive();
             const it = arr.find(x => x.id === id && x.type === 'activity');
-            if (!it) return null;
-            it.scans = it.scans || [];
-            it.scans.push({ at: new Date().toISOString(), src: source });
-            it.scanCount = (it.scanCount || 0) + 1;
-            it.lastScan = new Date().toISOString();
-            saveArchive(arr);
+            if (it) {
+                it.scans = it.scans || [];
+                it.scans.push({ at: new Date().toISOString(), src: source });
+                it.scanCount = (it.scanCount || 0) + 1;
+                it.lastScan = new Date().toISOString();
+                saveArchive(arr);
+            }
+            // Remote RPC (authoritative — aggregates across all devices)
+            const remoteCount = await remoteScan(id, source);
+            if (remoteCount != null) {
+                const arr2 = loadArchive();
+                const it2 = arr2.find(x => x.id === id);
+                if (it2) {
+                    it2.scanCount = remoteCount;
+                    it2.lastScan = new Date().toISOString();
+                    saveArchive(arr2);
+                    return it2;
+                }
+            }
             return it;
         }
 
@@ -2092,7 +2259,7 @@
             }).catch(() => {});
         }
 
-        function onScan(text) {
+        async function onScan(text) {
             if (lastScan === text) return;
             lastScan = text;
             const box = document.getElementById('scan-result');
@@ -2103,7 +2270,7 @@
 
             // Check for activity id
             const actId = extractActivityId(text);
-            const activity = actId ? logActivityScan(actId, 'scanner') : null;
+            const activity = actId ? await logActivityScan(actId, 'scanner') : null;
             if (activity) {
                 box.classList.add('activity');
                 label.textContent = 'Aktivitet scannet · ' + activity.scanCount + ' total';
@@ -2154,14 +2321,11 @@
         window.addEventListener('beforeunload', stopScanner);
 
         // ---------- Activity URL handler (?a=... ) ----------
-        function handleActivityVisit() {
+        async function handleActivityVisit() {
             const params = new URLSearchParams(location.search);
             const id = params.get('a');
             if (!id) return;
             const to = params.get('to');
-
-            const arr = loadArchive();
-            const activity = arr.find(x => x.id === id && x.type === 'activity');
 
             const overlay = document.getElementById('activity-hit');
             const nameEl = document.getElementById('ah-name');
@@ -2169,13 +2333,23 @@
             const targetEl = document.getElementById('ah-target');
             const statsEl = document.getElementById('ah-stats');
 
+            // Try to resolve activity — first local cache, then Supabase
+            let activity = loadArchive().find(x => x.id === id && x.type === 'activity');
+            if (!activity && sb) {
+                try {
+                    const { data } = await sb.from('qr_codes').select('*').eq('id', id).eq('type', 'activity').maybeSingle();
+                    if (data) activity = rowToEntry(data);
+                } catch (e) {}
+            }
+
             let targetValue = null;
             if (activity) {
-                const updated = logActivityScan(id, 'url');
-                nameEl.textContent = updated.name;
-                descEl.textContent = updated.description || '';
-                targetValue = updated.target;
-                statsEl.innerHTML = `<span class="num">${updated.scanCount}</span> total scan${updated.scanCount === 1 ? '' : 's'} på denne enhed`;
+                const updated = await logActivityScan(id, 'url');
+                const a = updated || activity;
+                nameEl.textContent = a.name;
+                descEl.textContent = a.description || '';
+                targetValue = a.target;
+                statsEl.innerHTML = `<span class="num">${a.scanCount}</span> total scan${a.scanCount === 1 ? '' : 's'}`;
             } else {
                 nameEl.textContent = to ? 'Aktivitet' : 'Ukendt aktivitet';
                 descEl.textContent = to ? '' : 'ID: ' + id;
@@ -2210,6 +2384,19 @@
         // ---------- Init ----------
         updateBadge();
         handleActivityVisit();
+
+        // Pull from Supabase and replace local cache (remote is authoritative)
+        (async () => {
+            const pulled = await remotePull();
+            if (!pulled) return;
+            saveArchive(pulled.codes);
+            saveDeclaredSections(pulled.sections);
+            updateBadge();
+            // Re-render if the archive tab is open
+            if (document.querySelector('.tab.active')?.dataset.tab === 'saved') {
+                renderGallery();
+            }
+        })();
     })();
     </script>
 </body>
