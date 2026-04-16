@@ -478,6 +478,27 @@
             border: 1px dashed rgba(255,255,255,0.15);
             border-radius: 8px;
         }
+
+        /* Drag & drop */
+        .card[draggable="true"] { cursor: grab; }
+        .card.dragging {
+            opacity: 0.4;
+            cursor: grabbing;
+        }
+        .section-header.drop-target,
+        .gallery-grid.drop-target {
+            background: rgba(255, 102, 0, 0.1);
+            outline: 2px dashed rgba(255, 102, 0, 0.6);
+            outline-offset: -2px;
+            border-radius: 8px;
+        }
+        .section-header.drop-target { border-bottom-color: rgba(255, 102, 0, 0.8); }
+        .section-grip {
+            display: inline-block;
+            color: rgba(255,255,255,0.25);
+            font-size: 11px;
+            margin-right: 4px;
+        }
         .card {
             background: rgba(255,255,255,0.03);
             border: 1px solid rgba(255,255,255,0.1);
@@ -1126,7 +1147,6 @@
                     <div class="field">
                         <label for="qr-section">Sektion <span class="muted">(valgfri, vælg eller skriv ny)</span></label>
                         <input type="text" id="qr-section" list="section-list" placeholder="f.eks. 'Event Day' eller 'Zone 1'" autocomplete="off">
-                        <datalist id="section-list"></datalist>
                     </div>
 
                     <!-- Simple mode -->
@@ -1257,6 +1277,9 @@
             </div>
         </div>
     </div>
+
+    <!-- Global datalist (must be outside hidden panels for Chrome to show suggestions) -->
+    <datalist id="section-list"></datalist>
 
     <!-- Prompt modal -->
     <div class="modal" id="prompt-modal">
@@ -1677,7 +1700,32 @@
                 toggleSelect(item.id, e.target.checked);
                 card.classList.toggle('selected', e.target.checked);
             });
+
+            // Drag & drop
+            card.setAttribute('draggable', 'true');
+            card.addEventListener('dragstart', (e) => {
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', item.id);
+                card.classList.add('dragging');
+            });
+            card.addEventListener('dragend', () => {
+                card.classList.remove('dragging');
+                document.querySelectorAll('.drop-target').forEach(el => el.classList.remove('drop-target'));
+            });
             return card;
+        }
+
+        function moveItemToSection(itemId, sectionName) {
+            const trimmed = (sectionName || '').trim();
+            const arr = loadArchive();
+            const it = arr.find(x => x.id === itemId);
+            if (!it) return;
+            if ((it.section || '') === trimmed) return;
+            it.section = trimmed;
+            saveArchive(arr);
+            if (trimmed) addDeclaredSection(trimmed);
+            renderGallery();
+            toast(trimmed ? 'Flyttet til ' + trimmed : 'Flyttet ud');
         }
 
         function renderGallery() {
@@ -1735,6 +1783,26 @@
                     else set.delete(section);
                     saveCollapsed(set);
                 });
+
+                // Drop target for drag & drop
+                const dropTargetSection = isDefault ? '' : section;
+                const onDragOver = (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    header.classList.add('drop-target');
+                };
+                const onDragLeave = (e) => {
+                    if (!header.contains(e.relatedTarget)) header.classList.remove('drop-target');
+                };
+                const onDrop = (e) => {
+                    e.preventDefault();
+                    header.classList.remove('drop-target');
+                    const id = e.dataTransfer.getData('text/plain');
+                    if (id) moveItemToSection(id, dropTargetSection);
+                };
+                header.addEventListener('dragover', onDragOver);
+                header.addEventListener('dragleave', onDragLeave);
+                header.addEventListener('drop', onDrop);
                 header.querySelectorAll('.section-edit').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         e.stopPropagation();
@@ -1749,11 +1817,26 @@
                 if (items.length === 0) {
                     const es = document.createElement('div');
                     es.className = 'section-empty';
-                    es.textContent = 'Tom sektion — flyt koder hertil eller opret nye';
+                    es.textContent = 'Tom sektion — træk kort hertil eller opret nye';
                     grid.appendChild(es);
                 } else {
                     items.forEach(item => grid.appendChild(buildCard(item)));
                 }
+                // Drop target on grid too (so empty sections accept drops)
+                grid.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    grid.classList.add('drop-target');
+                });
+                grid.addEventListener('dragleave', (e) => {
+                    if (!grid.contains(e.relatedTarget)) grid.classList.remove('drop-target');
+                });
+                grid.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    grid.classList.remove('drop-target');
+                    const id = e.dataTransfer.getData('text/plain');
+                    if (id) moveItemToSection(id, dropTargetSection);
+                });
                 wrap.appendChild(grid);
             });
         }
