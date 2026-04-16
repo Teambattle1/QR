@@ -446,6 +446,38 @@
         }
         .section-header.collapsed .section-toggle { transform: rotate(-90deg); }
         .section-header.collapsed + .gallery-grid { display: none; }
+        .section-edit {
+            background: none;
+            border: 1px solid rgba(255, 102, 0, 0.25);
+            color: rgba(255, 102, 0, 0.7);
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 11px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+        .section-edit:hover {
+            background: rgba(255, 102, 0, 0.15);
+            color: #ff6600;
+            border-color: rgba(255, 102, 0, 0.6);
+        }
+        .section-empty {
+            grid-column: 1 / -1;
+            padding: 20px;
+            text-align: center;
+            color: rgba(255,255,255,0.35);
+            font-size: 11px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            background: rgba(255,255,255,0.02);
+            border: 1px dashed rgba(255,255,255,0.15);
+            border-radius: 8px;
+        }
         .card {
             background: rgba(255,255,255,0.03);
             border: 1px solid rgba(255,255,255,0.1);
@@ -553,6 +585,248 @@
         .icon-btn.del:hover {
             color: #ff5577;
             border-color: rgba(255, 85, 119, 0.5);
+        }
+
+        /* Card selection (for print) */
+        .card-check {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 3;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .card-check input { position: absolute; opacity: 0; pointer-events: none; }
+        .card-check .checkmark {
+            width: 22px;
+            height: 22px;
+            border: 1.5px solid rgba(255,255,255,0.5);
+            border-radius: 5px;
+            background: rgba(0,0,0,0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            color: transparent;
+            transition: all 0.15s ease;
+        }
+        .card-check:hover .checkmark { border-color: rgba(255, 102, 0, 0.9); }
+        .card-check input:checked ~ .checkmark {
+            background: #ff6600;
+            border-color: #ff6600;
+            color: #fff;
+            box-shadow: 0 0 10px rgba(255, 102, 0, 0.5);
+        }
+        .card-check input:checked ~ .checkmark::after { content: '✓'; }
+        .card.selected {
+            border-color: rgba(255, 102, 0, 0.7) !important;
+            box-shadow: 0 0 15px rgba(255, 102, 0, 0.3) !important;
+        }
+
+        /* Print setup modal */
+        .print-setup {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 10002;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .print-setup.show { display: flex; animation: fade-in 0.25s ease; }
+        .print-setup-box {
+            max-width: 440px;
+            width: 100%;
+            background: rgba(15,15,15,0.98);
+            border: 1px solid rgba(255, 102, 0, 0.4);
+            border-radius: 14px;
+            padding: 26px;
+            box-shadow: 0 0 40px rgba(255, 102, 0, 0.2);
+        }
+        .print-setup-box h3 {
+            color: #ff6600;
+            font-size: 16px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        .print-setup-box .sub {
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 18px;
+        }
+        .check-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            font-size: 12px;
+            color: rgba(255,255,255,0.7);
+            cursor: pointer;
+            user-select: none;
+        }
+        .check-row input {
+            width: 16px;
+            height: 16px;
+            accent-color: #ff6600;
+            cursor: pointer;
+        }
+
+        /* Print view (hidden on screen, shown on print) */
+        .print-view { display: none; }
+
+        @media print {
+            html.skip-intro .intro-overlay,
+            html:not(.skip-intro) .intro-overlay { display: none !important; }
+            body > *:not(.print-view) { display: none !important; }
+            .print-view { display: block !important; }
+            html, body {
+                background: #fff !important;
+                color: #000 !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            @page { size: A4; margin: 15mm; }
+            .print-header {
+                font-size: 22pt;
+                font-weight: bold;
+                text-align: center;
+                padding-bottom: 6mm;
+                border-bottom: 2px solid #ff6600;
+                margin-bottom: 8mm;
+                color: #000;
+                letter-spacing: 2pt;
+                text-transform: uppercase;
+            }
+            .print-header .sub {
+                font-size: 10pt;
+                font-weight: normal;
+                letter-spacing: 1pt;
+                color: #666;
+                margin-top: 2mm;
+                text-transform: none;
+            }
+            .print-page {
+                page-break-after: always;
+                display: grid;
+                gap: 8mm;
+            }
+            .print-page:last-child { page-break-after: auto; }
+            .print-page[data-count="1"] { grid-template-columns: 1fr; }
+            .print-page[data-count="2"] { grid-template-columns: 1fr; }
+            .print-page[data-count="4"] { grid-template-columns: 1fr 1fr; }
+            .print-page[data-count="6"] { grid-template-columns: 1fr 1fr; }
+            .print-page[data-count="9"] { grid-template-columns: 1fr 1fr 1fr; }
+            .print-cell {
+                text-align: center;
+                padding: 5mm;
+                border: 1pt solid #ccc;
+                border-radius: 3mm;
+                break-inside: avoid;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: flex-start;
+            }
+            .print-cell.is-activity { border: 2pt solid #ff6600; }
+            .print-qr {
+                width: 100%;
+                max-width: 60mm;
+                aspect-ratio: 1;
+                padding: 2mm;
+                background: #fff;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .print-page[data-count="1"] .print-qr { max-width: 120mm; }
+            .print-page[data-count="2"] .print-qr { max-width: 90mm; }
+            .print-page[data-count="9"] .print-qr { max-width: 45mm; }
+            .print-qr img {
+                max-width: 100%;
+                max-height: 100%;
+                image-rendering: pixelated;
+                image-rendering: crisp-edges;
+            }
+            .print-name {
+                font-size: 12pt;
+                font-weight: bold;
+                margin-top: 3mm;
+                color: #000;
+            }
+            .print-type {
+                display: inline-block;
+                padding: 0.5mm 2mm;
+                background: #ff6600;
+                color: #fff;
+                font-size: 7pt;
+                letter-spacing: 1pt;
+                border-radius: 2mm;
+                margin-top: 2mm;
+                text-transform: uppercase;
+            }
+            .print-type.simple { background: #333; }
+            .print-desc {
+                font-size: 9pt;
+                color: #333;
+                margin-top: 2mm;
+                line-height: 1.4;
+                max-width: 100%;
+            }
+            .print-target {
+                font-size: 8pt;
+                color: #555;
+                margin-top: 2mm;
+                word-break: break-all;
+                font-family: 'Courier New', monospace;
+                max-width: 100%;
+            }
+            .print-page[data-count="9"] .print-name { font-size: 9pt; margin-top: 2mm; }
+            .print-page[data-count="9"] .print-desc,
+            .print-page[data-count="9"] .print-target,
+            .print-page[data-count="9"] .print-type { display: none; }
+            .print-page[data-count="6"] .print-target { display: none; }
+
+            .print-explainer {
+                border: 1pt solid #ff6600;
+                border-radius: 3mm;
+                padding: 5mm;
+                margin-bottom: 8mm;
+                break-inside: avoid;
+            }
+            .print-expl-title {
+                font-size: 11pt;
+                font-weight: bold;
+                color: #ff6600;
+                margin-bottom: 3mm;
+                letter-spacing: 1pt;
+                text-transform: uppercase;
+            }
+            .print-expl-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 5mm;
+                font-size: 9pt;
+                color: #333;
+                line-height: 1.5;
+            }
+            .print-expl-grid strong { color: #000; }
+            .print-expl-grid .dot {
+                display: inline-block;
+                width: 8pt; height: 8pt;
+                border-radius: 50%;
+                margin-right: 4pt;
+                vertical-align: middle;
+            }
+            .print-expl-grid .dot.white {
+                background: #fff;
+                border: 1pt solid #000;
+            }
+            .print-expl-grid .dot.orange { background: #ff6600; }
         }
 
         .empty {
@@ -862,6 +1136,8 @@
             <div class="toolbar">
                 <span class="count" id="saved-count">0 gemte</span>
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button class="btn" id="btn-new-section">+ Ny sektion</button>
+                    <button class="btn primary" id="btn-print" disabled>Print valgte</button>
                     <button class="btn" id="btn-export">Eksporter JSON</button>
                     <label class="btn" for="import-file" style="display:inline-block; text-align:center;">Importer JSON</label>
                     <input type="file" id="import-file" accept="application/json" style="display:none">
@@ -891,6 +1167,41 @@
             </div>
         </div>
     </div>
+
+    <!-- Print setup modal -->
+    <div class="print-setup" id="print-setup">
+        <div class="print-setup-box">
+            <h3>Print / PDF</h3>
+            <div class="sub" id="print-count-sub">0 koder valgt</div>
+            <div class="field">
+                <label for="print-title">Titel</label>
+                <input type="text" id="print-title" placeholder="QR Codes">
+            </div>
+            <div class="field">
+                <label for="print-subtitle">Undertitel <span class="muted">(valgfri)</span></label>
+                <input type="text" id="print-subtitle" placeholder="Event Day · 2026">
+            </div>
+            <div class="field">
+                <label for="print-per-page">Koder per side</label>
+                <select id="print-per-page">
+                    <option value="1">1 (meget stor)</option>
+                    <option value="2">2 (stor)</option>
+                    <option value="4" selected>4 (standard)</option>
+                    <option value="6">6 (mindre)</option>
+                    <option value="9">9 (små)</option>
+                </select>
+            </div>
+            <label class="check-row"><input type="checkbox" id="print-include-desc" checked> Inkluder navn, beskrivelse og mål</label>
+            <label class="check-row"><input type="checkbox" id="print-include-explainer" checked> Inkluder explainer på forsiden</label>
+            <div class="btn-row" style="margin-top: 18px; justify-content: flex-end;">
+                <button class="btn" id="btn-print-cancel">Annuller</button>
+                <button class="btn primary" id="btn-print-do">Åbn print dialog</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Print view (hidden on screen, shown on print) -->
+    <div class="print-view" id="print-view"></div>
 
     <div class="toast" id="toast"></div>
 
@@ -1118,6 +1429,7 @@
         }
 
         const COLLAPSE_KEY = 'games_qr_collapsed_v1';
+        const SECTIONS_KEY = 'games_qr_sections_v1';
         function loadCollapsed() {
             try { return new Set(JSON.parse(localStorage.getItem(COLLAPSE_KEY)) || []); }
             catch (e) { return new Set(); }
@@ -1125,13 +1437,66 @@
         function saveCollapsed(set) {
             try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...set])); } catch (e) {}
         }
+        function loadDeclaredSections() {
+            try { return JSON.parse(localStorage.getItem(SECTIONS_KEY)) || []; }
+            catch (e) { return []; }
+        }
+        function saveDeclaredSections(arr) {
+            try { localStorage.setItem(SECTIONS_KEY, JSON.stringify(arr)); } catch (e) {}
+        }
+        function addDeclaredSection(name) {
+            name = (name || '').trim();
+            if (!name) return;
+            const arr = loadDeclaredSections();
+            if (!arr.includes(name)) { arr.push(name); saveDeclaredSections(arr); }
+        }
+        function removeDeclaredSection(name) {
+            saveDeclaredSections(loadDeclaredSections().filter(s => s !== name));
+        }
+        function renameDeclaredSection(oldName, newName) {
+            saveDeclaredSections(loadDeclaredSections().map(s => s === oldName ? newName : s));
+        }
+        function getAllSectionNames() {
+            const seen = new Set();
+            const result = [];
+            loadArchive().forEach(x => {
+                const s = (x.section || '').trim();
+                if (s && !seen.has(s)) { result.push(s); seen.add(s); }
+            });
+            loadDeclaredSections().forEach(s => { if (!seen.has(s)) { result.push(s); seen.add(s); } });
+            return result;
+        }
+        function escapeHtml(s) {
+            return String(s || '').replace(/[&<>"']/g, c =>
+                ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+
+        // Selection state for print
+        const selected = new Set();
+        function toggleSelect(id, checked) {
+            if (checked) selected.add(id); else selected.delete(id);
+            updatePrintBtn();
+        }
+        function updatePrintBtn() {
+            const btn = document.getElementById('btn-print');
+            if (selected.size) {
+                btn.textContent = 'Print valgte (' + selected.size + ')';
+                btn.disabled = false;
+            } else {
+                btn.textContent = 'Print valgte';
+                btn.disabled = true;
+            }
+        }
 
         function buildCard(item) {
             const isAct = item.type === 'activity';
             const card = document.createElement('div');
-            card.className = 'card' + (isAct ? ' is-activity' : '');
+            const isSelected = selected.has(item.id);
+            card.className = 'card' + (isAct ? ' is-activity' : '') + (isSelected ? ' selected' : '');
+            card.dataset.cardId = item.id;
 
             let html = '';
+            html += `<label class="card-check" title="Vælg til print"><input type="checkbox" ${isSelected ? 'checked' : ''}><span class="checkmark"></span></label>`;
             if (isAct) html += '<div class="card-badge">Aktivitet</div>';
             html += `<div class="card-qr"><img src="${item.image}" alt=""></div>`;
             html += `<div class="card-name"></div>`;
@@ -1146,6 +1511,7 @@
             html += `
                 <div class="card-actions">
                     <button class="icon-btn" data-act="load">Rediger</button>
+                    <button class="icon-btn" data-act="move">Flyt</button>
                     <button class="icon-btn" data-act="dl">PNG</button>
                     <button class="icon-btn" data-act="copy">Copy</button>
                     ${isAct ? '<button class="icon-btn" data-act="reset">Nulstil</button>' : ''}
@@ -1160,6 +1526,11 @@
             card.querySelectorAll('[data-act]').forEach(b => {
                 b.addEventListener('click', () => handleCard(b.dataset.act, item));
             });
+            const cb = card.querySelector('.card-check input');
+            cb.addEventListener('change', (e) => {
+                toggleSelect(item.id, e.target.checked);
+                card.classList.toggle('selected', e.target.checked);
+            });
             return card;
         }
 
@@ -1167,15 +1538,17 @@
             const arr = loadArchive();
             const wrap = document.getElementById('gallery');
             const empty = document.getElementById('empty-msg');
+            const declared = loadDeclaredSections();
             document.getElementById('saved-count').textContent =
                 arr.length + ' gemt' + (arr.length === 1 ? '' : 'e');
             wrap.innerHTML = '';
-            if (!arr.length) { empty.style.display = 'block'; return; }
+            if (!arr.length && !declared.length) { empty.style.display = 'block'; return; }
             empty.style.display = 'none';
 
-            // Group by section (preserve first-seen order)
+            // Group by section (preserve first-seen order), include declared empty sections
             const groups = new Map();
             const DEFAULT = 'Uden sektion';
+            declared.forEach(s => { if (!groups.has(s)) groups.set(s, []); });
             arr.forEach(item => {
                 const sec = (item.section || '').trim() || DEFAULT;
                 if (!groups.has(sec)) groups.set(sec, []);
@@ -1194,6 +1567,7 @@
             const collapsed = loadCollapsed();
 
             groups.forEach((items, section) => {
+                const isDefault = section === DEFAULT;
                 const header = document.createElement('div');
                 header.className = 'section-header';
                 if (collapsed.has(section)) header.classList.add('collapsed');
@@ -1201,32 +1575,86 @@
                 const totalScans = items.reduce((n, x) => n + (x.scanCount || 0), 0);
                 header.innerHTML = `
                     <div class="section-title">
-                        <span class="section-name">${section}</span>
+                        <span class="section-name">${escapeHtml(section)}</span>
                         <span class="section-count">${items.length}</span>
                         ${activityCount > 0 ? `<span class="section-count" style="color:#ff9955;background:rgba(255,102,0,0.1)">${totalScans} scans</span>` : ''}
+                        ${!isDefault ? '<button class="section-edit" data-sec-act="rename" title="Omdøb sektion">✎</button>' : ''}
+                        ${!isDefault && items.length === 0 ? '<button class="section-edit" data-sec-act="delsec" title="Slet tom sektion">✕</button>' : ''}
                     </div>
                     <span class="section-toggle">▾</span>`;
-                header.addEventListener('click', () => {
+                header.addEventListener('click', (e) => {
+                    if (e.target.closest('.section-edit')) return;
                     const set = loadCollapsed();
                     if (header.classList.toggle('collapsed')) set.add(section);
                     else set.delete(section);
                     saveCollapsed(set);
                 });
+                header.querySelectorAll('.section-edit').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        if (btn.dataset.secAct === 'rename') renameSection(section);
+                        else if (btn.dataset.secAct === 'delsec') deleteEmptySection(section);
+                    });
+                });
                 wrap.appendChild(header);
 
                 const grid = document.createElement('div');
                 grid.className = 'gallery-grid';
-                items.forEach(item => grid.appendChild(buildCard(item)));
+                if (items.length === 0) {
+                    const es = document.createElement('div');
+                    es.className = 'section-empty';
+                    es.textContent = 'Tom sektion — flyt koder hertil eller opret nye';
+                    grid.appendChild(es);
+                } else {
+                    items.forEach(item => grid.appendChild(buildCard(item)));
+                }
                 wrap.appendChild(grid);
             });
+        }
+
+        function renameSection(oldName) {
+            const newName = prompt('Nyt navn for sektion "' + oldName + '":', oldName);
+            if (newName === null) return;
+            const trimmed = newName.trim();
+            if (!trimmed || trimmed === oldName) return;
+            const arr = loadArchive();
+            arr.forEach(x => { if ((x.section || '').trim() === oldName) x.section = trimmed; });
+            saveArchive(arr);
+            renameDeclaredSection(oldName, trimmed);
+            // Preserve collapsed state
+            const col = loadCollapsed();
+            if (col.has(oldName)) { col.delete(oldName); col.add(trimmed); saveCollapsed(col); }
+            renderGallery();
+            toast('Omdøbt');
+        }
+
+        function deleteEmptySection(name) {
+            if (!confirm('Slet tom sektion "' + name + '"?')) return;
+            removeDeclaredSection(name);
+            renderGallery();
+            toast('Sektion slettet');
         }
 
         function handleCard(act, item) {
             if (act === 'del') {
                 if (!confirm('Slet "' + item.name + '"?')) return;
                 saveArchive(loadArchive().filter(x => x.id !== item.id));
-                renderGallery(); updateBadge();
+                selected.delete(item.id);
+                renderGallery(); updateBadge(); updatePrintBtn();
                 toast('Slettet');
+            } else if (act === 'move') {
+                const current = item.section || '';
+                const all = getAllSectionNames();
+                const hint = all.length ? '\n\nEksisterende sektioner: ' + all.join(', ') : '';
+                const next = prompt('Flyt "' + item.name + '" til sektion:' + hint + '\n\n(Lad blank for "Uden sektion")', current);
+                if (next === null) return;
+                const trimmed = next.trim();
+                const arr = loadArchive();
+                const it = arr.find(x => x.id === item.id);
+                if (it) { it.section = trimmed; saveArchive(arr); }
+                if (trimmed) addDeclaredSection(trimmed);
+                renderGallery();
+                toast(trimmed ? 'Flyttet til ' + trimmed : 'Flyttet');
             } else if (act === 'reset') {
                 if (!confirm('Nulstil tæller for "' + item.name + '"?')) return;
                 const arr = loadArchive();
@@ -1300,6 +1728,89 @@
             };
             reader.readAsText(file);
         });
+
+        // ---------- Sections + Print ----------
+        document.getElementById('btn-new-section').addEventListener('click', () => {
+            const name = prompt('Navn på ny sektion:');
+            if (!name) return;
+            const trimmed = name.trim();
+            if (!trimmed) return;
+            addDeclaredSection(trimmed);
+            document.querySelector('.tab[data-tab="saved"]').click();
+            renderGallery();
+            toast('Sektion oprettet');
+        });
+
+        document.getElementById('btn-print').addEventListener('click', () => {
+            if (!selected.size) return;
+            const n = selected.size;
+            document.getElementById('print-count-sub').textContent =
+                n + ' kode' + (n === 1 ? '' : 'r') + ' valgt';
+            document.getElementById('print-setup').classList.add('show');
+        });
+        document.getElementById('btn-print-cancel').addEventListener('click', () => {
+            document.getElementById('print-setup').classList.remove('show');
+        });
+        document.getElementById('btn-print-do').addEventListener('click', () => {
+            const arr = loadArchive();
+            const items = arr.filter(x => selected.has(x.id));
+            if (!items.length) { toast('Ingen valgt'); return; }
+            const perPage = parseInt(document.getElementById('print-per-page').value, 10);
+            const title = document.getElementById('print-title').value.trim();
+            const subtitle = document.getElementById('print-subtitle').value.trim();
+            const includeDesc = document.getElementById('print-include-desc').checked;
+            const includeExplainer = document.getElementById('print-include-explainer').checked;
+            renderPrintView(items, perPage, title, subtitle, includeDesc, includeExplainer);
+            document.getElementById('print-setup').classList.remove('show');
+            setTimeout(() => window.print(), 300);
+        });
+
+        function renderPrintView(items, perPage, title, subtitle, includeDesc, includeExplainer) {
+            const view = document.getElementById('print-view');
+            view.innerHTML = '';
+
+            if (title) {
+                const header = document.createElement('div');
+                header.className = 'print-header';
+                header.innerHTML = escapeHtml(title) +
+                    (subtitle ? '<div class="sub">' + escapeHtml(subtitle) + '</div>' : '');
+                view.appendChild(header);
+            }
+
+            if (includeExplainer) {
+                const ex = document.createElement('div');
+                ex.className = 'print-explainer';
+                ex.innerHTML = `
+                    <div class="print-expl-title">Sådan virker koderne</div>
+                    <div class="print-expl-grid">
+                        <div><span class="dot white"></span><strong>Simpel kode</strong> — QR'en indeholder præcis det skrevne indhold (tekst eller URL). Scanning åbner indholdet direkte. Ingen tracking.</div>
+                        <div><span class="dot orange"></span><strong>Aktivitet</strong> — Dynamisk QR der peger tilbage til en tracking-side. Antal scans og seneste tidspunkt registreres. Orange ramme markerer aktiviteter.</div>
+                    </div>`;
+                view.appendChild(ex);
+            }
+
+            for (let i = 0; i < items.length; i += perPage) {
+                const page = document.createElement('div');
+                page.className = 'print-page';
+                page.dataset.count = perPage;
+                items.slice(i, i + perPage).forEach(item => {
+                    const isAct = item.type === 'activity';
+                    const cell = document.createElement('div');
+                    cell.className = 'print-cell' + (isAct ? ' is-activity' : '');
+                    let html = `<div class="print-qr"><img src="${item.image}" alt=""></div>`;
+                    html += `<div class="print-name">${escapeHtml(item.name || '')}</div>`;
+                    html += `<div class="print-type${isAct ? '' : ' simple'}">${isAct ? 'Aktivitet' : 'Simpel'}</div>`;
+                    if (includeDesc) {
+                        if (item.description) html += `<div class="print-desc">${escapeHtml(item.description)}</div>`;
+                        if (isAct && item.target) html += `<div class="print-target">${escapeHtml(item.target)}</div>`;
+                        else if (!isAct) html += `<div class="print-target">${escapeHtml(item.data || '')}</div>`;
+                    }
+                    cell.innerHTML = html;
+                    page.appendChild(cell);
+                });
+                view.appendChild(page);
+            }
+        }
 
         // ---------- Scan tracking ----------
         function logActivityScan(id, source) {
