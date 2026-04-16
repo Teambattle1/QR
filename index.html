@@ -676,6 +676,64 @@
             cursor: pointer;
         }
 
+        /* Generic modal (prompt / confirm) */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 10003;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal.show { display: flex; animation: fade-in 0.2s ease; }
+        .modal-box {
+            max-width: 440px;
+            width: 100%;
+            background: rgba(15,15,15,0.98);
+            border: 1px solid rgba(255, 102, 0, 0.4);
+            border-radius: 14px;
+            padding: 26px;
+            box-shadow: 0 0 40px rgba(255, 102, 0, 0.2);
+        }
+        .modal-box h3 {
+            color: #ff6600;
+            font-size: 15px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+        .modal-msg {
+            font-size: 13px;
+            color: rgba(255,255,255,0.7);
+            line-height: 1.5;
+            margin-bottom: 14px;
+            white-space: pre-wrap;
+        }
+        .modal-box input[type="text"] {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 14px;
+            font-family: inherit;
+            margin-bottom: 14px;
+        }
+        .modal-box input:focus {
+            outline: none;
+            border-color: #ff6600;
+            box-shadow: 0 0 10px rgba(255, 102, 0, 0.2);
+        }
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
         /* Print view (hidden on screen, shown on print) */
         .print-view { display: none; }
 
@@ -1200,6 +1258,31 @@
         </div>
     </div>
 
+    <!-- Prompt modal -->
+    <div class="modal" id="prompt-modal">
+        <div class="modal-box">
+            <h3 id="prompt-title">Indtast</h3>
+            <div class="modal-msg" id="prompt-message"></div>
+            <input type="text" id="prompt-input" autocomplete="off">
+            <div class="modal-actions">
+                <button class="btn" id="prompt-cancel">Annuller</button>
+                <button class="btn primary" id="prompt-ok">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm modal -->
+    <div class="modal" id="confirm-modal">
+        <div class="modal-box">
+            <h3 id="confirm-title">Bekræft</h3>
+            <div class="modal-msg" id="confirm-message"></div>
+            <div class="modal-actions">
+                <button class="btn" id="confirm-cancel">Annuller</button>
+                <button class="btn primary" id="confirm-ok">Bekræft</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Print view (hidden on screen, shown on print) -->
     <div class="print-view" id="print-view"></div>
 
@@ -1471,6 +1554,69 @@
                 ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         }
 
+        // ---------- Custom modal prompts (prompt()/confirm() are blocked in sandboxed iframes) ----------
+        function showPrompt(title, message, defaultValue, placeholder) {
+            return new Promise(resolve => {
+                const overlay = document.getElementById('prompt-modal');
+                document.getElementById('prompt-title').textContent = title || 'Indtast';
+                document.getElementById('prompt-message').textContent = message || '';
+                const input = document.getElementById('prompt-input');
+                input.value = defaultValue || '';
+                input.placeholder = placeholder || '';
+                input.setAttribute('list', 'section-list');
+                overlay.classList.add('show');
+                setTimeout(() => { input.focus(); input.select(); }, 30);
+
+                const ok = document.getElementById('prompt-ok');
+                const cancel = document.getElementById('prompt-cancel');
+
+                function cleanup(val) {
+                    overlay.classList.remove('show');
+                    ok.onclick = null;
+                    cancel.onclick = null;
+                    input.onkeydown = null;
+                    overlay.onclick = null;
+                    resolve(val);
+                }
+                ok.onclick = () => cleanup(input.value);
+                cancel.onclick = () => cleanup(null);
+                input.onkeydown = (e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); cleanup(input.value); }
+                    else if (e.key === 'Escape') cleanup(null);
+                };
+                overlay.onclick = (e) => { if (e.target === overlay) cleanup(null); };
+            });
+        }
+
+        function showConfirm(title, message, okLabel) {
+            return new Promise(resolve => {
+                const overlay = document.getElementById('confirm-modal');
+                document.getElementById('confirm-title').textContent = title || 'Bekræft';
+                document.getElementById('confirm-message').textContent = message || '';
+                const ok = document.getElementById('confirm-ok');
+                const cancel = document.getElementById('confirm-cancel');
+                ok.textContent = okLabel || 'Bekræft';
+                overlay.classList.add('show');
+                setTimeout(() => ok.focus(), 30);
+
+                function cleanup(val) {
+                    overlay.classList.remove('show');
+                    ok.onclick = null;
+                    cancel.onclick = null;
+                    overlay.onclick = null;
+                    document.onkeydown = null;
+                    resolve(val);
+                }
+                ok.onclick = () => cleanup(true);
+                cancel.onclick = () => cleanup(false);
+                overlay.onclick = (e) => { if (e.target === overlay) cleanup(false); };
+                document.onkeydown = (e) => {
+                    if (e.key === 'Escape') cleanup(false);
+                    else if (e.key === 'Enter') cleanup(true);
+                };
+            });
+        }
+
         // Selection state for print
         const selected = new Set();
         function toggleSelect(id, checked) {
@@ -1612,8 +1758,8 @@
             });
         }
 
-        function renameSection(oldName) {
-            const newName = prompt('Nyt navn for sektion "' + oldName + '":', oldName);
+        async function renameSection(oldName) {
+            const newName = await showPrompt('Omdøb sektion', 'Nyt navn for "' + oldName + '":', oldName);
             if (newName === null) return;
             const trimmed = newName.trim();
             if (!trimmed || trimmed === oldName) return;
@@ -1621,23 +1767,22 @@
             arr.forEach(x => { if ((x.section || '').trim() === oldName) x.section = trimmed; });
             saveArchive(arr);
             renameDeclaredSection(oldName, trimmed);
-            // Preserve collapsed state
             const col = loadCollapsed();
             if (col.has(oldName)) { col.delete(oldName); col.add(trimmed); saveCollapsed(col); }
             renderGallery();
             toast('Omdøbt');
         }
 
-        function deleteEmptySection(name) {
-            if (!confirm('Slet tom sektion "' + name + '"?')) return;
+        async function deleteEmptySection(name) {
+            if (!await showConfirm('Slet sektion', 'Slet tom sektion "' + name + '"?', 'Slet')) return;
             removeDeclaredSection(name);
             renderGallery();
             toast('Sektion slettet');
         }
 
-        function handleCard(act, item) {
+        async function handleCard(act, item) {
             if (act === 'del') {
-                if (!confirm('Slet "' + item.name + '"?')) return;
+                if (!await showConfirm('Slet kode', 'Slet "' + item.name + '"? Kan ikke fortrydes.', 'Slet')) return;
                 saveArchive(loadArchive().filter(x => x.id !== item.id));
                 selected.delete(item.id);
                 renderGallery(); updateBadge(); updatePrintBtn();
@@ -1645,8 +1790,8 @@
             } else if (act === 'move') {
                 const current = item.section || '';
                 const all = getAllSectionNames();
-                const hint = all.length ? '\n\nEksisterende sektioner: ' + all.join(', ') : '';
-                const next = prompt('Flyt "' + item.name + '" til sektion:' + hint + '\n\n(Lad blank for "Uden sektion")', current);
+                const hint = all.length ? 'Eksisterende: ' + all.join(', ') + '\n\n(Lad blank for "Uden sektion")' : '(Lad blank for "Uden sektion")';
+                const next = await showPrompt('Flyt til sektion', hint, current, 'Indtast sektionsnavn…');
                 if (next === null) return;
                 const trimmed = next.trim();
                 const arr = loadArchive();
@@ -1656,7 +1801,7 @@
                 renderGallery();
                 toast(trimmed ? 'Flyttet til ' + trimmed : 'Flyttet');
             } else if (act === 'reset') {
-                if (!confirm('Nulstil tæller for "' + item.name + '"?')) return;
+                if (!await showConfirm('Nulstil tæller', 'Nulstil tæller for "' + item.name + '"?', 'Nulstil')) return;
                 const arr = loadArchive();
                 const it = arr.find(x => x.id === item.id);
                 if (it) { it.scans = []; it.scanCount = 0; it.lastScan = null; saveArchive(arr); }
@@ -1691,10 +1836,11 @@
             }
         }
 
-        document.getElementById('btn-clear-all').addEventListener('click', () => {
+        document.getElementById('btn-clear-all').addEventListener('click', async () => {
             if (!loadArchive().length) return;
-            if (!confirm('Slet ALLE gemte koder? Kan ikke fortrydes.')) return;
-            saveArchive([]); renderGallery(); updateBadge();
+            if (!await showConfirm('Slet alt', 'Slet ALLE gemte koder? Kan ikke fortrydes.', 'Slet alle')) return;
+            saveArchive([]); selected.clear();
+            renderGallery(); updateBadge(); updatePrintBtn();
             toast('Arkiv tømt');
         });
 
@@ -1730,8 +1876,8 @@
         });
 
         // ---------- Sections + Print ----------
-        document.getElementById('btn-new-section').addEventListener('click', () => {
-            const name = prompt('Navn på ny sektion:');
+        document.getElementById('btn-new-section').addEventListener('click', async () => {
+            const name = await showPrompt('Ny sektion', 'Indtast navn på sektion:', '', 'f.eks. Event Day');
             if (!name) return;
             const trimmed = name.trim();
             if (!trimmed) return;
