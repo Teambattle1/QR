@@ -204,6 +204,70 @@
             box-shadow: 0 0 10px rgba(255, 102, 0, 0.2);
         }
 
+        .explainer {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+        @media (max-width: 500px) { .explainer { grid-template-columns: 1fr; } }
+        .explainer-col {
+            padding: 12px 14px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .explainer-col:hover { border-color: rgba(255,255,255,0.25); }
+        .form[data-mode="simple"] .explainer-col.explain-simple,
+        .form[data-mode="activity"] .explainer-col.explain-activity {
+            border-color: rgba(255, 102, 0, 0.5);
+            background: rgba(255, 102, 0, 0.06);
+            box-shadow: 0 0 12px rgba(255, 102, 0, 0.15);
+        }
+        .explainer-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+        .explainer-title .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .explainer-title .dot.white {
+            background: #fff;
+            box-shadow: 0 0 6px rgba(255,255,255,0.5);
+        }
+        .explainer-title .dot.orange {
+            background: #ff6600;
+            box-shadow: 0 0 8px rgba(255,102,0,0.8);
+        }
+        .explainer-body {
+            font-size: 11px;
+            line-height: 1.55;
+            color: rgba(255,255,255,0.6);
+        }
+        .explainer-body strong { color: rgba(255,255,255,0.9); }
+        .explainer-use {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            font-size: 10px;
+            color: rgba(255,255,255,0.4);
+            letter-spacing: 0.5px;
+            line-height: 1.5;
+        }
+        .explainer-use span { color: rgba(255, 102, 0, 0.7); font-weight: bold; }
+
         .field { margin-bottom: 16px; }
         .field label {
             display: block;
@@ -705,6 +769,23 @@
                         <button type="button" data-mode="activity">Aktivitet</button>
                     </div>
 
+                    <div class="explainer">
+                        <div class="explainer-col explain-simple" data-pick="simple">
+                            <div class="explainer-title"><span class="dot white"></span> Simpel</div>
+                            <div class="explainer-body">
+                                QR'en indeholder <strong>præcis det du skriver</strong> (tekst eller URL). Scanning åbner indholdet direkte.
+                                <div class="explainer-use"><span>Ingen tracking</span> · menu, Wi-Fi, vCard, direkte link</div>
+                            </div>
+                        </div>
+                        <div class="explainer-col explain-activity" data-pick="activity">
+                            <div class="explainer-title"><span class="dot orange"></span> Aktivitet</div>
+                            <div class="explainer-body">
+                                Dynamisk QR der peger tilbage til appen. <strong>Tæller scans</strong> — antal + seneste tidspunkt vises i arkivet.
+                                <div class="explainer-use"><span>Tracking</span> · event-zoner, plakater, kampagner</div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="field">
                         <label for="qr-name">Navn</label>
                         <input type="text" id="qr-name" placeholder="f.eks. 'Zone 1 Start'">
@@ -731,10 +812,6 @@
                         <label for="qr-target">Mål <span class="muted">(URL eller tekst der vises ved scan)</span></label>
                         <textarea id="qr-target" placeholder="https://... eller instruktioner"></textarea>
                     </div>
-                    <div class="info-hint only-activity">
-                        <strong>Dynamisk kode:</strong> QR'en peger tilbage til denne app med et unikt ID. Hver gang den scannes registreres antal + tid.
-                    </div>
-
                     <div class="row-2">
                         <div class="field">
                             <label for="qr-size">Størrelse</label>
@@ -876,11 +953,16 @@
 
         // ---------- Type toggle ----------
         const form = document.getElementById('gen-form');
+        function setMode(mode) {
+            form.dataset.mode = mode;
+            document.querySelectorAll('.type-toggle button').forEach(b =>
+                b.classList.toggle('active', b.dataset.mode === mode));
+        }
         document.querySelectorAll('.type-toggle button').forEach(b => {
-            b.addEventListener('click', () => {
-                document.querySelectorAll('.type-toggle button').forEach(x => x.classList.toggle('active', x === b));
-                form.dataset.mode = b.dataset.mode;
-            });
+            b.addEventListener('click', () => setMode(b.dataset.mode));
+        });
+        document.querySelectorAll('.explainer-col').forEach(c => {
+            c.addEventListener('click', () => setMode(c.dataset.pick));
         });
 
         // ---------- Generator ----------
