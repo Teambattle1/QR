@@ -710,6 +710,12 @@
                         <input type="text" id="qr-name" placeholder="f.eks. 'Zone 1 Start'">
                     </div>
 
+                    <div class="field">
+                        <label for="qr-section">Sektion <span class="muted">(valgfri, vælg eller skriv ny)</span></label>
+                        <input type="text" id="qr-section" list="section-list" placeholder="f.eks. 'Event Day' eller 'Zone 1'" autocomplete="off">
+                        <datalist id="section-list"></datalist>
+                    </div>
+
                     <!-- Simple mode -->
                     <div class="field only-simple">
                         <label for="qr-data">Indhold <span class="muted">(tekst / URL)</span></label>
@@ -890,6 +896,7 @@
             return {
                 mode: form.dataset.mode,
                 name: document.getElementById('qr-name').value.trim(),
+                section: document.getElementById('qr-section').value.trim(),
                 data: document.getElementById('qr-data').value.trim(),
                 description: document.getElementById('qr-desc').value.trim(),
                 target: document.getElementById('qr-target').value.trim(),
@@ -901,7 +908,7 @@
         }
 
         function clearForm() {
-            ['qr-name','qr-data','qr-desc','qr-target'].forEach(id => document.getElementById(id).value = '');
+            ['qr-name','qr-section','qr-data','qr-desc','qr-target'].forEach(id => document.getElementById(id).value = '');
             previewEl.innerHTML = '';
             previewLabel.textContent = '';
             currentQR = null;
@@ -981,6 +988,7 @@
                 id: currentMeta.id,
                 type: currentMeta.type,
                 name: currentMeta.name || (currentMeta.type === 'activity' ? 'Aktivitet' : currentMeta.data.slice(0, 30)),
+                section: currentMeta.section || '',
                 data: currentMeta.data,
                 description: currentMeta.description || '',
                 target: currentMeta.target || '',
@@ -1027,6 +1035,52 @@
             document.getElementById('saved-badge').textContent = n ? '(' + n + ')' : '';
         }
 
+        const COLLAPSE_KEY = 'games_qr_collapsed_v1';
+        function loadCollapsed() {
+            try { return new Set(JSON.parse(localStorage.getItem(COLLAPSE_KEY)) || []); }
+            catch (e) { return new Set(); }
+        }
+        function saveCollapsed(set) {
+            try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...set])); } catch (e) {}
+        }
+
+        function buildCard(item) {
+            const isAct = item.type === 'activity';
+            const card = document.createElement('div');
+            card.className = 'card' + (isAct ? ' is-activity' : '');
+
+            let html = '';
+            if (isAct) html += '<div class="card-badge">Aktivitet</div>';
+            html += `<div class="card-qr"><img src="${item.image}" alt=""></div>`;
+            html += `<div class="card-name"></div>`;
+            html += `<div class="card-data"></div>`;
+            if (isAct) {
+                html += `
+                    <div class="card-stats">
+                        <span class="scans">${item.scanCount || 0} scan${(item.scanCount || 0) === 1 ? '' : 's'}</span>
+                        <span class="last">${item.lastScan ? formatDate(item.lastScan) : 'Ingen endnu'}</span>
+                    </div>`;
+            }
+            html += `
+                <div class="card-actions">
+                    <button class="icon-btn" data-act="load">Rediger</button>
+                    <button class="icon-btn" data-act="dl">PNG</button>
+                    <button class="icon-btn" data-act="copy">Copy</button>
+                    ${isAct ? '<button class="icon-btn" data-act="reset">Nulstil</button>' : ''}
+                    <button class="icon-btn del" data-act="del">Slet</button>
+                </div>`;
+            card.innerHTML = html;
+
+            card.querySelector('.card-name').textContent = item.name;
+            card.querySelector('.card-data').textContent = isAct
+                ? (item.description || item.target || '—')
+                : item.data;
+            card.querySelectorAll('[data-act]').forEach(b => {
+                b.addEventListener('click', () => handleCard(b.dataset.act, item));
+            });
+            return card;
+        }
+
         function renderGallery() {
             const arr = loadArchive();
             const wrap = document.getElementById('gallery');
@@ -1037,41 +1091,51 @@
             if (!arr.length) { empty.style.display = 'block'; return; }
             empty.style.display = 'none';
 
+            // Group by section (preserve first-seen order)
+            const groups = new Map();
+            const DEFAULT = 'Uden sektion';
             arr.forEach(item => {
-                const isAct = item.type === 'activity';
-                const card = document.createElement('div');
-                card.className = 'card' + (isAct ? ' is-activity' : '');
+                const sec = (item.section || '').trim() || DEFAULT;
+                if (!groups.has(sec)) groups.set(sec, []);
+                groups.get(sec).push(item);
+            });
 
-                let html = '';
-                if (isAct) html += '<div class="card-badge">Aktivitet</div>';
-                html += `<div class="card-qr"><img src="${item.image}" alt=""></div>`;
-                html += `<div class="card-name"></div>`;
-                html += `<div class="card-data"></div>`;
-                if (isAct) {
-                    html += `
-                        <div class="card-stats">
-                            <span class="scans">${item.scanCount || 0} scan${(item.scanCount || 0) === 1 ? '' : 's'}</span>
-                            <span class="last">${item.lastScan ? formatDate(item.lastScan) : 'Ingen endnu'}</span>
-                        </div>`;
-                }
-                html += `
-                    <div class="card-actions">
-                        <button class="icon-btn" data-act="load">Rediger</button>
-                        <button class="icon-btn" data-act="dl">PNG</button>
-                        <button class="icon-btn" data-act="copy">Copy</button>
-                        ${isAct ? '<button class="icon-btn" data-act="reset">Nulstil</button>' : ''}
-                        <button class="icon-btn del" data-act="del">Slet</button>
-                    </div>`;
-                card.innerHTML = html;
+            // Populate datalist for autocomplete
+            const datalist = document.getElementById('section-list');
+            datalist.innerHTML = '';
+            [...groups.keys()].filter(s => s !== DEFAULT).forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s;
+                datalist.appendChild(opt);
+            });
 
-                card.querySelector('.card-name').textContent = item.name;
-                card.querySelector('.card-data').textContent = isAct
-                    ? (item.description || item.target || '—')
-                    : item.data;
-                card.querySelectorAll('[data-act]').forEach(b => {
-                    b.addEventListener('click', () => handleCard(b.dataset.act, item));
+            const collapsed = loadCollapsed();
+
+            groups.forEach((items, section) => {
+                const header = document.createElement('div');
+                header.className = 'section-header';
+                if (collapsed.has(section)) header.classList.add('collapsed');
+                const activityCount = items.filter(x => x.type === 'activity').length;
+                const totalScans = items.reduce((n, x) => n + (x.scanCount || 0), 0);
+                header.innerHTML = `
+                    <div class="section-title">
+                        <span class="section-name">${section}</span>
+                        <span class="section-count">${items.length}</span>
+                        ${activityCount > 0 ? `<span class="section-count" style="color:#ff9955;background:rgba(255,102,0,0.1)">${totalScans} scans</span>` : ''}
+                    </div>
+                    <span class="section-toggle">▾</span>`;
+                header.addEventListener('click', () => {
+                    const set = loadCollapsed();
+                    if (header.classList.toggle('collapsed')) set.add(section);
+                    else set.delete(section);
+                    saveCollapsed(set);
                 });
-                wrap.appendChild(card);
+                wrap.appendChild(header);
+
+                const grid = document.createElement('div');
+                grid.className = 'gallery-grid';
+                items.forEach(item => grid.appendChild(buildCard(item)));
+                wrap.appendChild(grid);
             });
         }
 
@@ -1103,6 +1167,7 @@
                 document.querySelectorAll('.type-toggle button').forEach(b =>
                     b.classList.toggle('active', b.dataset.mode === form.dataset.mode));
                 document.getElementById('qr-name').value = item.name || '';
+                document.getElementById('qr-section').value = item.section || '';
                 document.getElementById('qr-data').value = isAct ? '' : (item.data || '');
                 document.getElementById('qr-desc').value = item.description || '';
                 document.getElementById('qr-target').value = item.target || '';
