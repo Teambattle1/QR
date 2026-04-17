@@ -772,6 +772,49 @@
             gap: 10px;
             flex-wrap: wrap;
         }
+        .log-box { max-width: 560px; }
+        .log-list {
+            max-height: 50vh;
+            overflow-y: auto;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.4);
+            margin-bottom: 14px;
+        }
+        .log-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            font-size: 12px;
+        }
+        .log-row:last-child { border-bottom: none; }
+        .log-row .when { color: #fff; font-weight: 500; }
+        .log-row .meta {
+            color: rgba(255,255,255,0.5);
+            font-size: 11px;
+            text-align: right;
+            white-space: nowrap;
+        }
+        .log-row .src {
+            display: inline-block;
+            padding: 1px 7px;
+            border-radius: 999px;
+            background: rgba(255, 102, 0, 0.15);
+            color: #ff9955;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-right: 6px;
+        }
+        .log-empty {
+            padding: 24px;
+            text-align: center;
+            color: rgba(255,255,255,0.4);
+            font-size: 12px;
+        }
 
         /* Print view (hidden on screen, shown on print) */
         .print-view { display: none; }
@@ -1301,6 +1344,18 @@
         </div>
     </div>
 
+    <!-- Scan log modal -->
+    <div class="modal" id="log-modal">
+        <div class="modal-box log-box">
+            <h3 id="log-title">Scan log</h3>
+            <div class="modal-msg" id="log-subtitle"></div>
+            <div class="log-list" id="log-list"></div>
+            <div class="modal-actions">
+                <button class="btn primary" id="log-close">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Confirm modal -->
     <div class="modal" id="confirm-modal">
         <div class="modal-box">
@@ -1428,6 +1483,125 @@
                 if (error) { console.warn('scan rpc', error); return null; }
                 return data;
             } catch (e) { console.warn('remoteScan', e); return null; }
+        }
+
+        // CR80 credit-card size: 85.60 × 53.98 mm. We render at 600 DPI for sharp print.
+        async function downloadCR80(item) {
+            const DPI = 600;
+            const mm = v => Math.round(v * DPI / 25.4);
+            const W = mm(85.60); // 2022 px
+            const H = mm(53.98); // 1276 px
+
+            const canvas = document.createElement('canvas');
+            canvas.width = W; canvas.height = H;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, W, H);
+
+            // Orange border frame
+            const bw = mm(1.2);
+            ctx.fillStyle = '#ff6600';
+            ctx.fillRect(0, 0, W, bw);
+            ctx.fillRect(0, H - bw, W, bw);
+            ctx.fillRect(0, 0, bw, H);
+            ctx.fillRect(W - bw, 0, bw, H);
+
+            // High-res QR (square, fills card height with padding)
+            const pad = mm(3.5);
+            const qrSize = H - pad * 2;
+            const qrDataUrl = regenerateImage({ ...item, size: qrSize, fg: '#000', bg: '#fff' });
+            if (qrDataUrl) {
+                const img = new Image();
+                await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = qrDataUrl; });
+                ctx.imageSmoothingEnabled = false;
+                ctx.drawImage(img, pad, (H - qrSize) / 2, qrSize, qrSize);
+            }
+
+            // Text column on the right of the QR
+            const tx = pad + qrSize + mm(3);
+            const tw = W - tx - pad;
+
+            // Orange name banner
+            const barH = mm(11);
+            const barY = mm(4);
+            ctx.fillStyle = '#ff6600';
+            ctx.fillRect(tx, barY, tw, barH);
+            ctx.fillStyle = '#fff';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            let nameSize = mm(5);
+            const nameText = (item.name || '').trim() || 'QR';
+            ctx.font = `bold ${nameSize}px Arial, sans-serif`;
+            while (ctx.measureText(nameText).width > tw - mm(4) && nameSize > mm(2.5)) {
+                nameSize -= mm(0.3);
+                ctx.font = `bold ${nameSize}px Arial, sans-serif`;
+            }
+            ctx.fillText(nameText, tx + tw / 2, barY + barH / 2);
+
+            // Description (wrapped)
+            const desc = (item.description || '').trim();
+            if (desc) {
+                const descY = barY + barH + mm(3);
+                const descMaxY = H - mm(8);
+                ctx.fillStyle = '#111';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                let descSize = mm(3.8);
+                const lineH = () => Math.round(descSize * 1.25);
+                const wrap = () => {
+                    ctx.font = `${descSize}px Arial, sans-serif`;
+                    const words = desc.split(/\s+/);
+                    const lines = [];
+                    let line = '';
+                    for (const w of words) {
+                        const test = line ? line + ' ' + w : w;
+                        if (ctx.measureText(test).width > tw) {
+                            if (line) lines.push(line);
+                            line = w;
+                        } else {
+                            line = test;
+                        }
+                    }
+                    if (line) lines.push(line);
+                    return lines;
+                };
+                let lines = wrap();
+                while (descY + lines.length * lineH() > descMaxY && descSize > mm(2.2)) {
+                    descSize -= mm(0.2);
+                    lines = wrap();
+                }
+                lines.forEach((ln, i) => ctx.fillText(ln, tx, descY + i * lineH()));
+            }
+
+            // Target/URL at bottom right (activity only)
+            if (item.type === 'activity' && item.target) {
+                ctx.fillStyle = '#888';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'bottom';
+                ctx.font = `${mm(2.2)}px "Courier New", monospace`;
+                const t = item.target.length > 80 ? item.target.slice(0, 77) + '…' : item.target;
+                ctx.fillText(t, W - pad, H - mm(2));
+            }
+
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/png');
+            link.download = (item.name || 'qr').replace(/[^\w\-]+/g, '_') + '-cr80.png';
+            document.body.appendChild(link); link.click(); link.remove();
+            toast('CR80 card saved');
+        }
+
+        async function remoteFetchScans(id) {
+            if (!sb) return null;
+            try {
+                const { data, error } = await sb.from('qr_scans')
+                    .select('scanned_at, source, device_id')
+                    .eq('qr_id', id)
+                    .order('scanned_at', { ascending: false })
+                    .limit(500);
+                if (error) { console.warn('fetchScans', error); return null; }
+                return data || [];
+            } catch (e) { console.warn('remoteFetchScans', e); return null; }
         }
 
         async function remoteResetScans(id) {
@@ -1831,7 +2005,9 @@
                     <button class="icon-btn" data-act="load">Edit</button>
                     <button class="icon-btn" data-act="move">Move</button>
                     <button class="icon-btn" data-act="dl">PNG</button>
+                    <button class="icon-btn" data-act="cr80">CR80</button>
                     <button class="icon-btn" data-act="copy">Copy</button>
+                    ${isAct ? '<button class="icon-btn" data-act="log">Log</button>' : ''}
                     ${isAct ? '<button class="icon-btn" data-act="reset">Reset</button>' : ''}
                     <button class="icon-btn del" data-act="del">Delete</button>
                 </div>`;
@@ -2035,6 +2211,8 @@
                 if (trimmed) addDeclaredSection(trimmed);
                 renderGallery();
                 toast(trimmed ? 'Moved to ' + trimmed : 'Moved');
+            } else if (act === 'log') {
+                showScanLog(item);
             } else if (act === 'reset') {
                 if (!await showConfirm('Reset counter', 'Reset counter for "' + item.name + '"?', 'Reset')) return;
                 const arr = loadArchive();
@@ -2047,6 +2225,8 @@
                 const a = document.createElement('a');
                 a.href = item.image; a.download = item.name + '.png';
                 document.body.appendChild(a); a.click(); a.remove();
+            } else if (act === 'cr80') {
+                downloadCR80(item);
             } else if (act === 'copy') {
                 navigator.clipboard.writeText(item.data).then(
                     () => toast('Copied'),
@@ -2221,6 +2401,56 @@
             return it;
         }
 
+        async function showScanLog(item) {
+            const overlay = document.getElementById('log-modal');
+            const title = document.getElementById('log-title');
+            const subtitle = document.getElementById('log-subtitle');
+            const list = document.getElementById('log-list');
+            const close = document.getElementById('log-close');
+
+            title.textContent = item.name || 'Scan log';
+            subtitle.textContent = `${item.scanCount || 0} total scan${(item.scanCount || 0) === 1 ? '' : 's'} · last: ${item.lastScan ? formatDate(item.lastScan) : 'none yet'}`;
+            list.innerHTML = '<div class="log-empty">Loading…</div>';
+            overlay.classList.add('show');
+
+            const remote = await remoteFetchScans(item.id);
+            const scans = (remote && remote.length) ? remote
+                : (item.scans || []).map(s => ({ scanned_at: s.at, source: s.src, device_id: null }));
+
+            if (!scans.length) {
+                list.innerHTML = '<div class="log-empty">No scans yet</div>';
+            } else {
+                list.innerHTML = '';
+                const myDevice = getDeviceId();
+                scans.forEach(s => {
+                    const row = document.createElement('div');
+                    row.className = 'log-row';
+                    const when = s.scanned_at ? new Date(s.scanned_at) : null;
+                    const whenStr = when ? `${when.toLocaleDateString('en-GB')} ${when.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}` : '—';
+                    const rel = when ? formatDate(s.scanned_at) : '';
+                    const src = (s.source || 'url').toLowerCase();
+                    const dev = s.device_id ? (s.device_id === myDevice ? 'this device' : s.device_id.slice(0, 10) + '…') : '';
+                    row.innerHTML = `
+                        <div>
+                            <span class="src">${escapeHtml(src)}</span>
+                            <span class="when">${escapeHtml(whenStr)}</span>
+                        </div>
+                        <div class="meta">${escapeHtml(rel)}${dev ? ' · ' + escapeHtml(dev) : ''}</div>`;
+                    list.appendChild(row);
+                });
+            }
+
+            function cleanup() {
+                overlay.classList.remove('show');
+                close.onclick = null;
+                overlay.onclick = null;
+                document.onkeydown = null;
+            }
+            close.onclick = cleanup;
+            overlay.onclick = (e) => { if (e.target === overlay) cleanup(); };
+            document.onkeydown = (e) => { if (e.key === 'Escape') cleanup(); };
+        }
+
         function extractActivityId(text) {
             try {
                 // Match ?a=<id> or &a=<id> in any URL-ish string
@@ -2327,13 +2557,7 @@
             if (!id) return;
             const to = params.get('to');
 
-            const overlay = document.getElementById('activity-hit');
-            const nameEl = document.getElementById('ah-name');
-            const descEl = document.getElementById('ah-desc');
-            const targetEl = document.getElementById('ah-target');
-            const statsEl = document.getElementById('ah-stats');
-
-            // Try to resolve activity — first local cache, then Supabase
+            // Resolve activity (local cache, then Supabase) to find target if ?to= missing
             let activity = loadArchive().find(x => x.id === id && x.type === 'activity');
             if (!activity && sb) {
                 try {
@@ -2342,38 +2566,48 @@
                 } catch (e) {}
             }
 
-            let targetValue = null;
+            const targetValue = (to && /^https?:\/\//i.test(to)) ? to
+                : (activity && activity.target) ? activity.target : null;
+            const isUrlTarget = targetValue && /^https?:\/\//i.test(targetValue);
+
+            // Log the scan (always). Await so the counter is recorded before we leave the page.
             if (activity) {
-                const updated = await logActivityScan(id, 'url');
-                const a = updated || activity;
-                nameEl.textContent = a.name;
-                descEl.textContent = a.description || '';
-                targetValue = a.target;
-                statsEl.innerHTML = `<span class="num">${a.scanCount}</span> total scan${a.scanCount === 1 ? '' : 's'}`;
+                try { await logActivityScan(id, 'url'); } catch (e) {}
+            }
+
+            // URL target → redirect immediately. No intro, no OK button.
+            if (isUrlTarget) {
+                location.replace(targetValue);
+                return;
+            }
+
+            // No URL target: show a minimal overlay with the text / missing-activity info.
+            const overlay = document.getElementById('activity-hit');
+            const nameEl = document.getElementById('ah-name');
+            const descEl = document.getElementById('ah-desc');
+            const targetEl = document.getElementById('ah-target');
+            const statsEl = document.getElementById('ah-stats');
+
+            if (activity) {
+                const fresh = loadArchive().find(x => x.id === id) || activity;
+                nameEl.textContent = fresh.name;
+                descEl.textContent = fresh.description || '';
+                statsEl.innerHTML = `<span class="num">${fresh.scanCount || 0}</span> total scan${(fresh.scanCount || 0) === 1 ? '' : 's'}`;
             } else {
-                nameEl.textContent = to ? 'Activity' : 'Unknown activity';
-                descEl.textContent = to ? '' : 'ID: ' + id;
-                targetValue = to;
+                nameEl.textContent = 'Unknown activity';
+                descEl.textContent = 'ID: ' + id;
                 statsEl.innerHTML = '';
             }
 
             targetEl.innerHTML = '';
             if (targetValue) {
-                if (/^https?:\/\//i.test(targetValue)) {
-                    const a = document.createElement('a');
-                    a.href = targetValue; a.className = 'btn primary';
-                    a.textContent = 'Open →'; a.target = '_blank'; a.rel = 'noopener';
-                    targetEl.appendChild(a);
-                } else {
-                    const div = document.createElement('div');
-                    div.className = 'target-text';
-                    div.textContent = targetValue;
-                    targetEl.appendChild(div);
-                }
+                const div = document.createElement('div');
+                div.className = 'target-text';
+                div.textContent = targetValue;
+                targetEl.appendChild(div);
             }
 
             overlay.classList.add('show');
-            // Clean URL so refresh doesn't double-count
             history.replaceState({}, '', location.pathname);
         }
 
