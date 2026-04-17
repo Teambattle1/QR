@@ -1553,7 +1553,7 @@
             }
 
             // ---- Name banner (full card width, wraps + shrinks to fit) ----
-            const nameText = (item.name || '').trim() || 'QR';
+            const nameText = ((item.name || '').trim() || 'QR').toUpperCase();
             const bannerPadX = mm(4);
             const bannerPadY = mm(2.5);
             const nameMaxW = cw - bannerPadX * 2;
@@ -1619,7 +1619,7 @@
                 logoY = cy + ch - logoH;
             }
 
-            const desc = (item.description || '').trim();
+            const desc = (item.description || '').trim().toUpperCase();
             if (desc) {
                 const descX = qrX + qrSize + gap;
                 const descW = (cx + cw) - descX;
@@ -1650,6 +1650,21 @@
                 ctx.imageSmoothingEnabled = true;
                 ctx.imageSmoothingQuality = 'high';
                 ctx.drawImage(logoImg, logoX, logoY, logoW, logoH);
+            }
+
+            // Italic "by TEAMBATTLE" footer — bottom of the right column,
+            // centered in the space to the left of the logo (or full column if no logo).
+            {
+                const footerSize = mm(2.8);
+                ctx.font = `italic ${footerSize}px Georgia, "Times New Roman", serif`;
+                ctx.fillStyle = '#555';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'alphabetic';
+                const footerRight = logoImg ? logoX - mm(1) : (cx + cw);
+                const footerLeft = qrX + qrSize + gap;
+                const footerCenterX = (footerLeft + footerRight) / 2;
+                const footerY = cy + ch - mm(1.5);
+                ctx.fillText('by TEAMBATTLE', footerCenterX, footerY);
             }
 
             const link = document.createElement('a');
