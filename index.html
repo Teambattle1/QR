@@ -566,6 +566,8 @@
         .card-name {
             font-size: 13px;
             font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
             margin-bottom: 4px;
             white-space: nowrap;
             overflow: hidden;
@@ -796,6 +798,26 @@
             gap: 10px;
             flex-wrap: wrap;
         }
+        .cr80-box { max-width: 720px; width: 100%; }
+        .cr80-preview {
+            width: 100%;
+            aspect-ratio: 85.6 / 53.98;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            margin: 0 0 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .cr80-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+        .cr80-preview img.loading { opacity: 0.1; }
         .log-box { max-width: 560px; }
         .log-list {
             max-height: 50vh;
@@ -1176,7 +1198,7 @@
 
     <div class="main-content">
         <a href="index.html" class="back-link">&larr; BACK</a>
-        <div class="version-badge" title="QR app version">v1.0</div>
+        <div class="version-badge" title="QR app version">v1.1</div>
 
         <h1 class="title"><span>QR</span> <span class="accent">GENERATOR</span></h1>
         <div class="subtitle">Create · Save · Scan · Track</div>
@@ -1368,6 +1390,18 @@
         </div>
     </div>
 
+    <!-- CR80 preview modal -->
+    <div class="modal" id="cr80-modal">
+        <div class="modal-box cr80-box">
+            <h3 id="cr80-title">CR80 preview</h3>
+            <div class="cr80-preview"><img id="cr80-preview-img" alt=""></div>
+            <div class="modal-actions">
+                <button class="btn" id="cr80-close">Close</button>
+                <button class="btn primary" id="cr80-download">Download PNG</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scan log modal -->
     <div class="modal" id="log-modal">
         <div class="modal-box log-box">
@@ -1510,7 +1544,7 @@
         }
 
         // CR80 credit-card size: 85.60 × 53.98 mm. Rendered at 600 DPI for sharp print.
-        async function downloadCR80(item) {
+        async function renderCR80Canvas(item) {
             const DPI = 600;
             const mm = v => Math.round(v * DPI / 25.4);
             const W = mm(85.60); // 2022 px
@@ -1667,11 +1701,45 @@
                 ctx.fillText('by TEAMBATTLE', footerCenterX, footerY);
             }
 
+            return canvas;
+        }
+
+        async function downloadCR80(item) {
+            const canvas = await renderCR80Canvas(item);
             const link = document.createElement('a');
             link.href = canvas.toDataURL('image/png');
             link.download = (item.name || 'qr').replace(/[^\w\-]+/g, '_') + '-cr80.png';
             document.body.appendChild(link); link.click(); link.remove();
             toast('CR80 card saved');
+        }
+
+        async function previewCR80(item) {
+            const overlay = document.getElementById('cr80-modal');
+            const imgEl = document.getElementById('cr80-preview-img');
+            const titleEl = document.getElementById('cr80-title');
+            const close = document.getElementById('cr80-close');
+            const dl = document.getElementById('cr80-download');
+
+            titleEl.textContent = (item.name || 'QR') + ' — CR80 preview';
+            imgEl.removeAttribute('src');
+            imgEl.classList.add('loading');
+            overlay.classList.add('show');
+
+            const canvas = await renderCR80Canvas(item);
+            imgEl.src = canvas.toDataURL('image/png');
+            imgEl.classList.remove('loading');
+
+            function cleanup() {
+                overlay.classList.remove('show');
+                close.onclick = null;
+                dl.onclick = null;
+                overlay.onclick = null;
+                document.onkeydown = null;
+            }
+            close.onclick = cleanup;
+            dl.onclick = () => { downloadCR80(item); };
+            overlay.onclick = (e) => { if (e.target === overlay) cleanup(); };
+            document.onkeydown = (e) => { if (e.key === 'Escape') cleanup(); };
         }
 
         async function remoteFetchScans(id) {
@@ -2089,6 +2157,7 @@
                     <button class="icon-btn" data-act="move"><span class="ico">⇆</span><span>Move</span></button>
                     <button class="icon-btn" data-act="dl"><span class="ico">⬇</span><span>PNG</span></button>
                     <button class="icon-btn" data-act="cr80"><span class="ico">▭</span><span>CR80</span></button>
+                    <button class="icon-btn" data-act="cr80p"><span class="ico">◉</span><span>Preview</span></button>
                     <button class="icon-btn" data-act="copy"><span class="ico">⧉</span><span>Copy</span></button>
                     ${isAct ? '<button class="icon-btn" data-act="log"><span class="ico">≡</span><span>Log</span></button>' : ''}
                     ${isAct ? '<button class="icon-btn" data-act="reset"><span class="ico">⟲</span><span>Reset</span></button>' : ''}
@@ -2310,6 +2379,8 @@
                 document.body.appendChild(a); a.click(); a.remove();
             } else if (act === 'cr80') {
                 downloadCR80(item);
+            } else if (act === 'cr80p') {
+                previewCR80(item);
             } else if (act === 'copy') {
                 navigator.clipboard.writeText(item.data).then(
                     () => toast('Copied'),
