@@ -600,30 +600,54 @@
             color: rgba(255,255,255,0.4);
             letter-spacing: 0.5px;
         }
-        .card-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+        .card-actions {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+        }
         .icon-btn {
-            padding: 6px 10px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.15);
-            border-radius: 5px;
-            color: rgba(255,255,255,0.6);
-            font-size: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            padding: 8px 4px;
+            background: linear-gradient(180deg, #ff7a1a, #e65c00);
+            border: 1px solid rgba(255, 102, 0, 0.8);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 9px;
             font-weight: bold;
             letter-spacing: 1px;
             text-transform: uppercase;
             cursor: pointer;
             font-family: inherit;
-            transition: all 0.2s ease;
-            flex: 1;
-            min-width: 38px;
+            transition: all 0.15s ease;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+        .icon-btn .ico {
+            font-size: 16px;
+            line-height: 1;
+            font-weight: normal;
+            letter-spacing: 0;
         }
         .icon-btn:hover {
-            color: #ff6600;
-            border-color: rgba(255, 102, 0, 0.4);
+            background: linear-gradient(180deg, #ff8c33, #ff6600);
+            border-color: #ff6600;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(255, 102, 0, 0.4);
+        }
+        .icon-btn:active { transform: translateY(0); }
+        .icon-btn.del {
+            background: linear-gradient(180deg, #444, #222);
+            border-color: rgba(255,255,255,0.15);
+            color: rgba(255,255,255,0.7);
         }
         .icon-btn.del:hover {
-            color: #ff5577;
-            border-color: rgba(255, 85, 119, 0.5);
+            background: linear-gradient(180deg, #ff5577, #d22a4a);
+            border-color: #ff5577;
+            color: #fff;
+            box-shadow: 0 2px 6px rgba(255, 85, 119, 0.4);
         }
 
         /* Card selection (for print) */
@@ -1485,7 +1509,7 @@
             } catch (e) { console.warn('remoteScan', e); return null; }
         }
 
-        // CR80 credit-card size: 85.60 × 53.98 mm. We render at 600 DPI for sharp print.
+        // CR80 credit-card size: 85.60 × 53.98 mm. Rendered at 600 DPI for sharp print.
         async function downloadCR80(item) {
             const DPI = 600;
             const mm = v => Math.round(v * DPI / 25.4);
@@ -1499,7 +1523,7 @@
             ctx.fillStyle = '#fff';
             ctx.fillRect(0, 0, W, H);
 
-            // Orange border frame
+            // Orange outer frame
             const bw = mm(1.2);
             ctx.fillStyle = '#ff6600';
             ctx.fillRect(0, 0, W, bw);
@@ -1507,81 +1531,125 @@
             ctx.fillRect(0, 0, bw, H);
             ctx.fillRect(W - bw, 0, bw, H);
 
-            // High-res QR (square, fills card height with padding)
-            const pad = mm(3.5);
-            const qrSize = H - pad * 2;
+            const innerPad = mm(3);
+            const cx = bw + innerPad;
+            const cy = bw + innerPad;
+            const cw = W - 2 * (bw + innerPad);
+            const ch = H - 2 * (bw + innerPad);
+
+            function wrap(text, maxW, fontStr) {
+                ctx.font = fontStr;
+                const words = text.split(/\s+/);
+                const lines = [];
+                let line = '';
+                for (const w of words) {
+                    const test = line ? line + ' ' + w : w;
+                    if (ctx.measureText(test).width > maxW && line) {
+                        lines.push(line); line = w;
+                    } else line = test;
+                }
+                if (line) lines.push(line);
+                return lines;
+            }
+
+            // ---- Name banner (full card width, wraps + shrinks to fit) ----
+            const nameText = (item.name || '').trim() || 'QR';
+            const bannerPadX = mm(4);
+            const bannerPadY = mm(2.5);
+            const nameMaxW = cw - bannerPadX * 2;
+
+            let nameSize = mm(6);
+            const nameMin = mm(2.8);
+            let nameLines = wrap(nameText, nameMaxW, `bold ${nameSize}px Arial, sans-serif`);
+            // Prefer fitting in <=2 lines; shrink if more.
+            while (nameLines.length > 2 && nameSize > nameMin) {
+                nameSize = Math.max(nameMin, nameSize - mm(0.3));
+                nameLines = wrap(nameText, nameMaxW, `bold ${nameSize}px Arial, sans-serif`);
+            }
+            // Safety: if any single line still overflows (one very long word), shrink further.
+            while (nameLines.some(l => ctx.measureText(l).width > nameMaxW) && nameSize > nameMin) {
+                nameSize = Math.max(nameMin, nameSize - mm(0.3));
+                ctx.font = `bold ${nameSize}px Arial, sans-serif`;
+            }
+
+            const nameLineH = Math.round(nameSize * 1.2);
+            const bannerH = nameLines.length * nameLineH + bannerPadY * 2;
+
+            ctx.fillStyle = '#ff6600';
+            ctx.fillRect(cx, cy, cw, bannerH);
+            ctx.fillStyle = '#fff';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = `bold ${nameSize}px Arial, sans-serif`;
+            nameLines.forEach((ln, i) => {
+                ctx.fillText(ln, cx + cw / 2, cy + bannerPadY + i * nameLineH + nameLineH / 2);
+            });
+
+            // ---- Below banner: QR on left, centered description on right ----
+            const belowY = cy + bannerH + mm(3);
+            const belowH = (cy + ch) - belowY;
+            const gap = mm(3);
+            const qrSize = Math.min(belowH, Math.floor(cw * 0.5));
+            const qrX = cx;
+            const qrY = belowY + (belowH - qrSize) / 2;
+
             const qrDataUrl = regenerateImage({ ...item, size: qrSize, fg: '#000', bg: '#fff' });
             if (qrDataUrl) {
                 const img = new Image();
                 await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = qrDataUrl; });
                 ctx.imageSmoothingEnabled = false;
-                ctx.drawImage(img, pad, (H - qrSize) / 2, qrSize, qrSize);
+                ctx.drawImage(img, qrX, qrY, qrSize, qrSize);
             }
 
-            // Text column on the right of the QR
-            const tx = pad + qrSize + mm(3);
-            const tw = W - tx - pad;
+            // Try to load the Teambattle logo (bottom-right corner). Optional.
+            const logoImg = await new Promise(resolve => {
+                const im = new Image();
+                im.onload = () => resolve(im);
+                im.onerror = () => resolve(null);
+                im.src = 'teambattle-logo.png';
+            });
 
-            // Orange name banner
-            const barH = mm(11);
-            const barY = mm(4);
-            ctx.fillStyle = '#ff6600';
-            ctx.fillRect(tx, barY, tw, barH);
-            ctx.fillStyle = '#fff';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            let nameSize = mm(5);
-            const nameText = (item.name || '').trim() || 'QR';
-            ctx.font = `bold ${nameSize}px Arial, sans-serif`;
-            while (ctx.measureText(nameText).width > tw - mm(4) && nameSize > mm(2.5)) {
-                nameSize -= mm(0.3);
-                ctx.font = `bold ${nameSize}px Arial, sans-serif`;
+            const logoMax = mm(11);
+            let logoW = 0, logoH = 0, logoX = 0, logoY = 0;
+            if (logoImg) {
+                const ratio = logoImg.naturalWidth / logoImg.naturalHeight;
+                if (ratio >= 1) { logoW = logoMax; logoH = Math.round(logoMax / ratio); }
+                else            { logoH = logoMax; logoW = Math.round(logoMax * ratio); }
+                logoX = cx + cw - logoW;
+                logoY = cy + ch - logoH;
             }
-            ctx.fillText(nameText, tx + tw / 2, barY + barH / 2);
 
-            // Description (wrapped)
             const desc = (item.description || '').trim();
             if (desc) {
-                const descY = barY + barH + mm(3);
-                const descMaxY = H - mm(8);
-                ctx.fillStyle = '#111';
-                ctx.textAlign = 'left';
-                ctx.textBaseline = 'top';
-                let descSize = mm(3.8);
-                const lineH = () => Math.round(descSize * 1.25);
-                const wrap = () => {
-                    ctx.font = `${descSize}px Arial, sans-serif`;
-                    const words = desc.split(/\s+/);
-                    const lines = [];
-                    let line = '';
-                    for (const w of words) {
-                        const test = line ? line + ' ' + w : w;
-                        if (ctx.measureText(test).width > tw) {
-                            if (line) lines.push(line);
-                            line = w;
-                        } else {
-                            line = test;
-                        }
-                    }
-                    if (line) lines.push(line);
-                    return lines;
-                };
-                let lines = wrap();
-                while (descY + lines.length * lineH() > descMaxY && descSize > mm(2.2)) {
-                    descSize -= mm(0.2);
-                    lines = wrap();
+                const descX = qrX + qrSize + gap;
+                const descW = (cx + cw) - descX;
+                // Leave room at the bottom for the logo so it can't overlap.
+                const descMaxH = belowH - (logoImg ? logoH + mm(2) : 0);
+
+                let descSize = mm(4.2);
+                const descMin = mm(2.2);
+                const lineH = () => Math.round(descSize * 1.3);
+                let descLines = wrap(desc, descW, `${descSize}px Arial, sans-serif`);
+                while (descLines.length * lineH() > descMaxH && descSize > descMin) {
+                    descSize = Math.max(descMin, descSize - mm(0.2));
+                    descLines = wrap(desc, descW, `${descSize}px Arial, sans-serif`);
                 }
-                lines.forEach((ln, i) => ctx.fillText(ln, tx, descY + i * lineH()));
+                ctx.font = `${descSize}px Arial, sans-serif`;
+                ctx.fillStyle = '#111';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const totalH = descLines.length * lineH();
+                const startY = belowY + (descMaxH - totalH) / 2 + lineH() / 2;
+                descLines.forEach((ln, i) => {
+                    ctx.fillText(ln, descX + descW / 2, startY + i * lineH());
+                });
             }
 
-            // Target/URL at bottom right (activity only)
-            if (item.type === 'activity' && item.target) {
-                ctx.fillStyle = '#888';
-                ctx.textAlign = 'right';
-                ctx.textBaseline = 'bottom';
-                ctx.font = `${mm(2.2)}px "Courier New", monospace`;
-                const t = item.target.length > 80 ? item.target.slice(0, 77) + '…' : item.target;
-                ctx.fillText(t, W - pad, H - mm(2));
+            // Draw logo last so it sits on top of anything else.
+            if (logoImg) {
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(logoImg, logoX, logoY, logoW, logoH);
             }
 
             const link = document.createElement('a');
@@ -2002,14 +2070,14 @@
             }
             html += `
                 <div class="card-actions">
-                    <button class="icon-btn" data-act="load">Edit</button>
-                    <button class="icon-btn" data-act="move">Move</button>
-                    <button class="icon-btn" data-act="dl">PNG</button>
-                    <button class="icon-btn" data-act="cr80">CR80</button>
-                    <button class="icon-btn" data-act="copy">Copy</button>
-                    ${isAct ? '<button class="icon-btn" data-act="log">Log</button>' : ''}
-                    ${isAct ? '<button class="icon-btn" data-act="reset">Reset</button>' : ''}
-                    <button class="icon-btn del" data-act="del">Delete</button>
+                    <button class="icon-btn" data-act="load"><span class="ico">✎</span><span>Edit</span></button>
+                    <button class="icon-btn" data-act="move"><span class="ico">⇆</span><span>Move</span></button>
+                    <button class="icon-btn" data-act="dl"><span class="ico">⬇</span><span>PNG</span></button>
+                    <button class="icon-btn" data-act="cr80"><span class="ico">▭</span><span>CR80</span></button>
+                    <button class="icon-btn" data-act="copy"><span class="ico">⧉</span><span>Copy</span></button>
+                    ${isAct ? '<button class="icon-btn" data-act="log"><span class="ico">≡</span><span>Log</span></button>' : ''}
+                    ${isAct ? '<button class="icon-btn" data-act="reset"><span class="ico">⟲</span><span>Reset</span></button>' : ''}
+                    <button class="icon-btn del" data-act="del"><span class="ico">✕</span><span>Delete</span></button>
                 </div>`;
             card.innerHTML = html;
 
