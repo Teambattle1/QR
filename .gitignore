@@ -1,0 +1,38 @@
+# === Credentials and secrets ===
+.env
+.env.local
+.env.*.local
+.env.production
+!.env.example
+
+# === Dependencies (if any added later) ===
+node_modules/
+
+# === Build output (if any added later) ===
+dist/
+build/
+.vite/
+
+# === Netlify ===
+.netlify/
+
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === Editor ===
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.sw?
+
+# === Logs ===
+*.log
+logs/
+
+# === MCP artefacts ===
+.playwright-mcp/
+
+# === Misc ===
+*.local
