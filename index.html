@@ -174,6 +174,55 @@
         .panel { display: none; max-width: 900px; margin: 0 auto; }
         .panel.active { display: block; }
 
+        /* ============ ADMIN PANEL ============ */
+        .admin-section {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        .admin-h {
+            color: #ff6600;
+            font-size: 13px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 14px;
+        }
+        .admin-p {
+            font-size: 13px;
+            color: rgba(255,255,255,0.7);
+            line-height: 1.6;
+            margin-bottom: 14px;
+        }
+        .admin-p strong { color: #fff; }
+        .admin-group {
+            margin-bottom: 22px;
+            padding-left: 4px;
+            border-left: 2px solid rgba(255, 102, 0, 0.3);
+            padding: 6px 0 6px 16px;
+        }
+        .admin-group:last-child { margin-bottom: 0; }
+        .admin-group h3 {
+            font-size: 12px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #ff9955;
+            margin-bottom: 8px;
+        }
+        .admin-group ul {
+            list-style: none;
+            padding: 0;
+        }
+        .admin-group li {
+            font-size: 13px;
+            color: rgba(255,255,255,0.7);
+            line-height: 1.55;
+            padding: 4px 0;
+        }
+        .admin-group li strong { color: #fff; font-weight: 600; }
+        .admin-group li em { color: rgba(255, 153, 85, 0.9); font-style: normal; }
+
         /* ============ GENERATOR ============ */
         .gen-wrap {
             display: grid;
@@ -296,6 +345,19 @@
             margin-bottom: 6px;
         }
         .field label .muted { color: rgba(255,255,255,0.25); font-size: 10px; }
+        .field .label-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+        .field .label-row label { margin-bottom: 0; flex: 1; }
+        .btn.btn-xs {
+            padding: 5px 10px;
+            font-size: 10px;
+            letter-spacing: 1px;
+        }
         .field input[type="text"],
         .field textarea,
         .field select {
@@ -1207,6 +1269,7 @@
             <button class="tab active" data-tab="generator">Generator</button>
             <button class="tab" data-tab="saved">Archive <span id="saved-badge" style="opacity:0.6"></span></button>
             <button class="tab" data-tab="scanner">Scanner</button>
+            <button class="tab" data-tab="admin">Admin</button>
         </div>
 
         <!-- GENERATOR -->
@@ -1252,13 +1315,19 @@
 
                     <!-- Simple mode -->
                     <div class="field only-simple">
-                        <label for="qr-data">Content <span class="muted">(text / URL encoded in the QR)</span></label>
+                        <div class="label-row">
+                            <label for="qr-data">Content <span class="muted">(text / URL encoded in the QR)</span></label>
+                            <button type="button" class="btn btn-xs" id="btn-test-data">🔗 Test URL</button>
+                        </div>
                         <textarea id="qr-data" placeholder="https://example.com or free text"></textarea>
                     </div>
 
                     <!-- Activity mode -->
                     <div class="field only-activity">
-                        <label for="qr-target">Target <span class="muted">(URL or text shown when the activity is scanned)</span></label>
+                        <div class="label-row">
+                            <label for="qr-target">Target <span class="muted">(URL or text shown when the activity is scanned)</span></label>
+                            <button type="button" class="btn btn-xs" id="btn-test-target">🔗 Test URL</button>
+                        </div>
                         <textarea id="qr-target" placeholder="https://... or instructions"></textarea>
                     </div>
                     <div class="row-2">
@@ -1313,10 +1382,6 @@
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
                     <button class="btn" id="btn-new-section">+ New section</button>
                     <button class="btn primary" id="btn-print" disabled>Print selected</button>
-                    <button class="btn" id="btn-export">Export JSON</button>
-                    <label class="btn" for="import-file" style="display:inline-block; text-align:center;">Import JSON</label>
-                    <input type="file" id="import-file" accept="application/json" style="display:none">
-                    <button class="btn danger" id="btn-clear-all">Delete all</button>
                 </div>
             </div>
             <div class="gallery" id="gallery"></div>
@@ -1338,6 +1403,76 @@
                         <button class="btn" id="btn-scan-copy">Copy</button>
                         <button class="btn" id="btn-scan-save">Save to archive</button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ADMIN -->
+        <div class="panel" id="panel-admin">
+            <div class="admin-section">
+                <h2 class="admin-h">Backup</h2>
+                <p class="admin-p">Your archive is stored in this browser and synced to the team database. Use <strong>Export</strong> to save a JSON snapshot to disk, and <strong>Import</strong> to merge codes from a previously exported file. Imported codes with an existing ID are skipped.</p>
+                <div class="btn-row">
+                    <button class="btn primary" id="btn-export">⬇ Export JSON</button>
+                    <label class="btn" for="import-file">⬆ Import JSON</label>
+                    <input type="file" id="import-file" accept="application/json" style="display:none">
+                </div>
+            </div>
+
+            <div class="admin-section">
+                <h2 class="admin-h">What everything does</h2>
+
+                <div class="admin-group">
+                    <h3>Generator</h3>
+                    <ul>
+                        <li><strong>Simple code</strong> — the QR encodes exactly what you type (text or URL). Scanning opens the content directly.</li>
+                        <li><strong>Activity</strong> — the QR encodes a link back to this app that counts every scan. Enter a <em>target</em> (URL or instructions) shown when the code is scanned.</li>
+                        <li><strong>Section</strong> — optional group label. Makes the archive easier to browse and supports drag &amp; drop between groups.</li>
+                        <li><strong>Size / ECL / colors</strong> — pixel size, error-correction level (L/M/Q/H), and foreground/background color of the QR.</li>
+                        <li><strong>Save</strong> — stores the code locally and syncs it to the team database so it shows up on every device.</li>
+                    </ul>
+                </div>
+
+                <div class="admin-group">
+                    <h3>Archive card buttons</h3>
+                    <ul>
+                        <li><strong>✎ Edit</strong> — load the code into the generator to change name, description, target or styling.</li>
+                        <li><strong>⇆ Move</strong> — move the code to another section (or type a new one).</li>
+                        <li><strong>⬇ PNG</strong> — download the raw QR image as a PNG.</li>
+                        <li><strong>▭ CR80</strong> — download a print-ready PNG sized for a standard credit card (85.60 × 53.98 mm at 600 DPI) with title banner, description, QR and the Teambattle logo.</li>
+                        <li><strong>◉ Preview</strong> — open the CR80 card in a modal before downloading.</li>
+                        <li><strong>⧉ Copy</strong> — copy the encoded QR data to the clipboard.</li>
+                        <li><strong>≡ Log</strong> (activity only) — view every scan: date, source (scanner vs. URL) and device.</li>
+                        <li><strong>⟲ Reset</strong> (activity only) — zero the scan counter and clear the log.</li>
+                        <li><strong>✕ Delete</strong> — remove the code everywhere.</li>
+                    </ul>
+                </div>
+
+                <div class="admin-group">
+                    <h3>Archive toolbar</h3>
+                    <ul>
+                        <li><strong>+ New section</strong> — add an empty section to drag codes into.</li>
+                        <li><strong>Print selected</strong> — tick the circle on one or more cards, then open the print/PDF dialog (1, 2, 4, 6 or 9 codes per page).</li>
+                        <li><strong>Drag &amp; drop</strong> — grab any card and drop it on another section header to move it.</li>
+                    </ul>
+                </div>
+
+                <div class="admin-group">
+                    <h3>Scanner</h3>
+                    <ul>
+                        <li><strong>Start scanner</strong> — opens the rear camera and scans QR codes live.</li>
+                        <li><strong>Activity hit</strong> — if the scanned code is an activity, the counter goes up +1 (across all devices) and the log records it.</li>
+                        <li><strong>Save to archive</strong> — save an unknown scanned code to your archive as a simple code.</li>
+                        <li><strong>Scan via URL</strong> — opening an activity QR in a normal camera redirects straight to its target and also increments the counter.</li>
+                    </ul>
+                </div>
+
+                <div class="admin-group">
+                    <h3>Sync</h3>
+                    <ul>
+                        <li>Codes, sections, scan counts and the per-scan log are stored in a shared Supabase database. Any device that opens the app sees the same archive.</li>
+                        <li>Every device gets a stable anonymous ID, written into each scan log row so you can tell devices apart.</li>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -1623,9 +1758,10 @@
             const belowY = cy + bannerH + mm(3);
             const belowH = (cy + ch) - belowY;
             const gap = mm(3);
-            const qrSize = Math.min(belowH, Math.floor(cw * 0.5));
+            const footerReserved = mm(4); // space under QR for the "by TEAMBATTLE" line
+            const qrSize = Math.min(belowH - footerReserved, Math.floor(cw * 0.5));
             const qrX = cx;
-            const qrY = belowY + (belowH - qrSize) / 2;
+            const qrY = belowY;
 
             const qrDataUrl = regenerateImage({ ...item, size: qrSize, fg: '#000', bg: '#fff' });
             if (qrDataUrl) {
@@ -1686,18 +1822,15 @@
                 ctx.drawImage(logoImg, logoX, logoY, logoW, logoH);
             }
 
-            // Italic "by TEAMBATTLE" footer — bottom of the right column,
-            // centered in the space to the left of the logo (or full column if no logo).
+            // Italic "by TEAMBATTLE" footer — centered directly under the QR.
             {
                 const footerSize = mm(2.8);
                 ctx.font = `italic ${footerSize}px Georgia, "Times New Roman", serif`;
                 ctx.fillStyle = '#555';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'alphabetic';
-                const footerRight = logoImg ? logoX - mm(1) : (cx + cw);
-                const footerLeft = qrX + qrSize + gap;
-                const footerCenterX = (footerLeft + footerRight) / 2;
-                const footerY = cy + ch - mm(1.5);
+                const footerCenterX = qrX + qrSize / 2;
+                const footerY = qrY + qrSize + (footerReserved + footerSize) / 2;
                 ctx.fillText('by TEAMBATTLE', footerCenterX, footerY);
             }
 
@@ -1856,6 +1989,18 @@
         });
         document.querySelectorAll('.explainer-col').forEach(c => {
             c.addEventListener('click', () => setMode(c.dataset.pick));
+        });
+
+        function openAsUrl(raw, label) {
+            if (!raw) { toast('Enter a ' + label + ' first'); return; }
+            if (!/^https?:\/\//i.test(raw)) { toast(label + ' is not a URL'); return; }
+            window.open(raw, '_blank', 'noopener,noreferrer');
+        }
+        document.getElementById('btn-test-target').addEventListener('click', () => {
+            openAsUrl(document.getElementById('qr-target').value.trim(), 'target');
+        });
+        document.getElementById('btn-test-data').addEventListener('click', () => {
+            openAsUrl(document.getElementById('qr-data').value.trim(), 'content');
         });
 
         // ---------- Generator ----------
@@ -2406,15 +2551,6 @@
             }
         }
 
-        document.getElementById('btn-clear-all').addEventListener('click', async () => {
-            if (!loadArchive().length) return;
-            if (!await showConfirm('Delete all', 'Delete ALL saved codes (locally and in Supabase)? Cannot be undone.', 'Delete all')) return;
-            saveArchive([]); selected.clear();
-            remoteClearAll();
-            renderGallery(); updateBadge(); updatePrintBtn();
-            toast('Archive cleared');
-        });
-
         document.getElementById('btn-export').addEventListener('click', () => {
             const arr = loadArchive();
             if (!arr.length) { toast('Nothing to export'); return; }
@@ -2621,16 +2757,53 @@
             const reader = document.getElementById('reader');
             reader.innerHTML = '';
             scanner = new Html5Qrcode('reader');
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            const config = {
+                fps: 15,
+                qrbox: { width: 280, height: 280 },
+                aspectRatio: 1.3333334,
+                videoConstraints: {
+                    facingMode: { ideal: 'environment' },
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 },
+                    advanced: [{ focusMode: 'continuous' }]
+                }
+            };
 
-            Html5Qrcode.getCameras().then(cams => {
-                if (!cams || !cams.length) { toast('No camera found'); scanner = null; return; }
-                const cam = cams.find(c => /back|rear|environment/i.test(c.label)) || cams[cams.length - 1];
-                scanner.start(cam.id, config, (text) => onScan(text), () => {}).then(() => {
-                    document.getElementById('btn-scan-start').style.display = 'none';
-                    document.getElementById('btn-scan-stop').style.display = 'inline-block';
-                }).catch(err => { toast('Camera error'); console.error(err); scanner = null; });
-            }).catch(err => { toast('Camera not available'); console.error(err); scanner = null; });
+            // iOS Safari autofokuserer bedre med facingMode-constraint end med deviceId
+            const startWith = (source) => scanner.start(
+                source, config, (text) => onScan(text), () => {}
+            ).then(() => {
+                document.getElementById('btn-scan-start').style.display = 'none';
+                document.getElementById('btn-scan-stop').style.display = 'inline-block';
+                applyContinuousFocus();
+            });
+
+            startWith({ facingMode: { ideal: 'environment' } })
+                .catch(() => {
+                    // Fallback: vælg eksplicit bagkamera via deviceId
+                    return Html5Qrcode.getCameras().then(cams => {
+                        if (!cams || !cams.length) throw new Error('no-cam');
+                        const cam = cams.find(c => /back|rear|environment/i.test(c.label)) || cams[cams.length - 1];
+                        return startWith(cam.id);
+                    });
+                })
+                .catch(err => { toast('Camera error'); console.error(err); scanner = null; });
+        }
+
+        function applyContinuousFocus() {
+            try {
+                const videoEl = document.querySelector('#reader video');
+                const stream = videoEl && videoEl.srcObject;
+                if (!stream) return;
+                const track = stream.getVideoTracks()[0];
+                if (!track || !track.getCapabilities) return;
+                const caps = track.getCapabilities();
+                const advanced = [];
+                if (caps.focusMode && caps.focusMode.includes('continuous')) {
+                    advanced.push({ focusMode: 'continuous' });
+                }
+                if (advanced.length) track.applyConstraints({ advanced }).catch(() => {});
+            } catch (e) {}
         }
 
         function stopScanner() {
