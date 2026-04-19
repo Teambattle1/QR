@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__7bebd5f0-7d88-4fc0-b25a-0acd5e7e6f66__list_projects",
+      "mcp__7bebd5f0-7d88-4fc0-b25a-0acd5e7e6f66__list_tables",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
+    ]
+  }
+}
