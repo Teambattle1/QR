@@ -1738,7 +1738,7 @@
             // Safety: if any single line still overflows (one very long word), shrink further.
             while (nameLines.some(l => ctx.measureText(l).width > nameMaxW) && nameSize > nameMin) {
                 nameSize = Math.max(nameMin, nameSize - mm(0.3));
-                ctx.font = `bold ${nameSize}px Arial, sans-serif`;
+                nameLines = wrap(nameText, nameMaxW, `bold ${nameSize}px Arial, sans-serif`);
             }
 
             const nameLineH = Math.round(nameSize * 1.2);
@@ -2286,7 +2286,7 @@
             let html = '';
             html += `<label class="card-check" title="Select for print"><input type="checkbox" ${isSelected ? 'checked' : ''}><span class="checkmark"></span></label>`;
             if (isAct) html += '<div class="card-badge">Activity</div>';
-            html += `<div class="card-qr"><img src="${item.image}" alt=""></div>`;
+            html += `<div class="card-qr"><img alt=""></div>`;
             html += `<div class="card-name"></div>`;
             html += `<div class="card-data"></div>`;
             if (isAct) {
@@ -2310,6 +2310,10 @@
                 </div>`;
             card.innerHTML = html;
 
+            // src sættes via DOM (ikke streng-interpoleret), så et fjendtligt
+            // item.image fra en importeret arkiv-fil ikke kan bryde ud af attributten
+            const qrImg = card.querySelector('.card-qr img');
+            if (qrImg) qrImg.src = item.image || '';
             card.querySelector('.card-name').textContent = item.name;
             card.querySelector('.card-data').textContent = item.description
                 || (isAct ? (item.target || '—') : item.data);
@@ -2573,7 +2577,12 @@
                     if (!Array.isArray(imported)) throw 0;
                     const current = loadArchive();
                     const existing = new Set(current.map(x => x.id));
-                    const merged = current.concat(imported.filter(x => x.id && x.data && !existing.has(x.id)));
+                    // Behold kun image hvis det er en data:image-URL — ellers null (regenereres),
+                    // så en importeret fil ikke kan smugle HTML ind via image-feltet.
+                    const safe = imported
+                        .filter(x => x.id && x.data && !existing.has(x.id))
+                        .map(x => ({ ...x, image: (typeof x.image === 'string' && x.image.startsWith('data:image/')) ? x.image : null }));
+                    const merged = current.concat(safe);
                     saveArchive(merged); renderGallery(); updateBadge();
                     toast('Imported: ' + (merged.length - current.length));
                 } catch (err) { toast('Error: invalid file'); }
@@ -2649,7 +2658,7 @@
                     const isAct = item.type === 'activity';
                     const cell = document.createElement('div');
                     cell.className = 'print-cell' + (isAct ? ' is-activity' : '');
-                    let html = `<div class="print-qr"><img src="${item.image}" alt=""></div>`;
+                    let html = `<div class="print-qr"><img alt=""></div>`;
                     html += `<div class="print-name">${escapeHtml(item.name || '')}</div>`;
                     html += `<div class="print-type${isAct ? '' : ' simple'}">${isAct ? 'Activity' : 'Simple'}</div>`;
                     if (includeDesc) {
@@ -2658,6 +2667,8 @@
                         else if (!isAct) html += `<div class="print-target">${escapeHtml(item.data || '')}</div>`;
                     }
                     cell.innerHTML = html;
+                    const pqImg = cell.querySelector('.print-qr img');
+                    if (pqImg) pqImg.src = item.image || '';
                     page.appendChild(cell);
                 });
                 view.appendChild(page);
@@ -2832,9 +2843,9 @@
                 box.classList.add('activity');
                 label.textContent = 'Activity scanned · ' + activity.scanCount + ' total';
                 const h = document.createElement('div');
-                h.innerHTML = `<strong style="font-size:15px">${activity.name}</strong>
-                               ${activity.description ? '<div style="margin-top:4px;opacity:0.7">' + activity.description + '</div>' : ''}
-                               ${activity.target ? '<div style="margin-top:8px;font-size:11px;opacity:0.5">→ ' + activity.target + '</div>' : ''}`;
+                h.innerHTML = `<strong style="font-size:15px">${escapeHtml(activity.name || '')}</strong>
+                               ${activity.description ? '<div style="margin-top:4px;opacity:0.7">' + escapeHtml(activity.description) + '</div>' : ''}
+                               ${activity.target ? '<div style="margin-top:8px;font-size:11px;opacity:0.5">→ ' + escapeHtml(activity.target) + '</div>' : ''}`;
                 content.appendChild(h);
                 toast('Activity +1');
             } else {
