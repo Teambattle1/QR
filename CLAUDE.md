@@ -12,3 +12,17 @@ Guidance for Claude Code when working in this repository.
   or two relevant links, e.g. "Netlify deploy preview is ready: <URL>".
 - Keep chat replies short and human-readable; the user often reads them on a
   phone.
+- Do not subscribe to pull-request activity (`subscribe_pr_activity`) unless
+  the user explicitly asks for PR monitoring: the raw GitHub/Netlify event
+  notifications are rendered verbatim in the chat, which is exactly the
+  noise these rules exist to prevent. To follow up on a PR, use a quiet
+  scheduled check-in (e.g. `send_later`) instead.
+
+## Task tracking (IMPORTANT)
+
+- At the start of every session, create a todo list from the user's requests
+  (use the task/todo tools): one item per thing the user asks for.
+- Update the list as work proceeds — mark items in progress when started and
+  completed as each fix lands — so the user can always see current status.
+- When the user adds new requests mid-session, add them to the list
+  immediately; never leave the list stale.
