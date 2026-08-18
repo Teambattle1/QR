@@ -12,7 +12,7 @@
         }
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1400,6 +1400,7 @@
                     <div class="scan-label" id="scan-label">Latest scan</div>
                     <div id="scan-content"></div>
                     <div class="btn-row" style="margin-top:10px;">
+                        <a class="btn primary" id="btn-scan-open" href="#" target="_blank" rel="noopener" style="display:none;text-decoration:none;">Open link ↗</a>
                         <button class="btn" id="btn-scan-copy">Copy</button>
                         <button class="btn" id="btn-scan-save">Save to archive</button>
                     </div>
@@ -2761,79 +2762,163 @@
         }
 
         // ---------- Scanner ----------
-        let scanner = null;
+        // Camera + decode handled directly: native BarcodeDetector where available,
+        // jsQR fallback elsewhere (html5-qrcode's qrbox/aspectRatio cropping misses
+        // codes on iOS Safari, which decodes the wrong region of the frame).
+        let scanStream = null;
+        let scanVideo = null;
+        let scanLoopId = null;
+        let scanDetector = null;
+        let lastScanAt = 0;
 
-        function startScanner() {
-            if (scanner) return;
-            const reader = document.getElementById('reader');
-            reader.innerHTML = '';
-            scanner = new Html5Qrcode('reader');
-            const config = {
-                fps: 15,
-                qrbox: { width: 280, height: 280 },
-                aspectRatio: 1.3333334,
-                videoConstraints: {
-                    facingMode: { ideal: 'environment' },
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 },
-                    advanced: [{ focusMode: 'continuous' }]
-                }
-            };
+        async function ensureDecoder() {
+            if (!scanDetector && 'BarcodeDetector' in window) {
+                try {
+                    const formats = await window.BarcodeDetector.getSupportedFormats();
+                    if (formats && formats.includes('qr_code')) {
+                        scanDetector = new window.BarcodeDetector({ formats: ['qr_code'] });
+                        return;
+                    }
+                } catch (e) {}
+            }
+            if (scanDetector || window.jsQR) return;
+            // jsQR script tag failed or was blocked — retry from mirror CDNs
+            const mirrors = [
+                'https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js',
+                'https://unpkg.com/jsqr@1.4.0/dist/jsQR.js'
+            ];
+            for (const src of mirrors) {
+                await new Promise((resolve) => {
+                    const s = document.createElement('script');
+                    s.src = src;
+                    s.onload = resolve;
+                    s.onerror = resolve;
+                    document.head.appendChild(s);
+                });
+                if (window.jsQR) return;
+            }
+            throw new Error('QR decoder failed to load');
+        }
 
-            // iOS Safari autofokuserer bedre med facingMode-constraint end med deviceId
-            const startWith = (source) => scanner.start(
-                source, config, (text) => onScan(text), () => {}
-            ).then(() => {
-                document.getElementById('btn-scan-start').style.display = 'none';
-                document.getElementById('btn-scan-stop').style.display = 'inline-block';
-                applyContinuousFocus();
-            });
+        async function startScanner() {
+            if (scanStream) return;
+            const startBtn = document.getElementById('btn-scan-start');
+            const stopBtn = document.getElementById('btn-scan-stop');
+            startBtn.disabled = true;
+            try {
+                await ensureDecoder();
 
-            startWith({ facingMode: { ideal: 'environment' } })
-                .catch(() => {
-                    // Fallback: vælg eksplicit bagkamera via deviceId
-                    return Html5Qrcode.getCameras().then(cams => {
-                        if (!cams || !cams.length) throw new Error('no-cam');
-                        const cam = cams.find(c => /back|rear|environment/i.test(c.label)) || cams[cams.length - 1];
-                        return startWith(cam.id);
+                const reader = document.getElementById('reader');
+                reader.innerHTML = '';
+                scanVideo = document.createElement('video');
+                // iOS Safari only autoplays camera video that is inline and muted
+                scanVideo.setAttribute('playsinline', '');
+                scanVideo.muted = true;
+                scanVideo.autoplay = true;
+                scanVideo.style.cssText = 'width:100%;display:block;border-radius:8px;';
+                reader.appendChild(scanVideo);
+
+                try {
+                    scanStream = await navigator.mediaDevices.getUserMedia({
+                        audio: false,
+                        video: {
+                            facingMode: { ideal: 'environment' },
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        }
                     });
-                })
-                .catch(err => { toast('Camera error'); console.error(err); scanner = null; });
+                } catch (e) {
+                    scanStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+                }
+                scanVideo.srcObject = scanStream;
+                await scanVideo.play();
+                applyContinuousFocus();
+
+                startBtn.style.display = 'none';
+                stopBtn.style.display = 'inline-block';
+                scanLoop();
+            } catch (err) {
+                console.error(err);
+                stopScanner();
+                toast(err && (err.name === 'NotAllowedError' || err.name === 'NotFoundError')
+                    ? 'Camera blocked – allow camera access for this site'
+                    : 'Camera error');
+            } finally {
+                startBtn.disabled = false;
+            }
+        }
+
+        function scanLoop() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            let busy = false;
+            const tick = async () => {
+                if (!scanStream) return;
+                if (!busy && scanVideo && scanVideo.readyState >= 2) {
+                    busy = true;
+                    try {
+                        let text = null;
+                        if (scanDetector) {
+                            const codes = await scanDetector.detect(scanVideo);
+                            if (codes && codes.length) text = codes[0].rawValue;
+                        } else {
+                            const vw = scanVideo.videoWidth, vh = scanVideo.videoHeight;
+                            if (vw && vh) {
+                                const scale = Math.min(1, 720 / Math.max(vw, vh));
+                                const w = Math.round(vw * scale), h = Math.round(vh * scale);
+                                if (canvas.width !== w || canvas.height !== h) {
+                                    canvas.width = w; canvas.height = h;
+                                }
+                                ctx.drawImage(scanVideo, 0, 0, w, h);
+                                const img = ctx.getImageData(0, 0, w, h);
+                                const code = window.jsQR(img.data, w, h, { inversionAttempts: 'attemptBoth' });
+                                if (code && code.data) text = code.data;
+                            }
+                        }
+                        if (text) onScan(text);
+                    } catch (e) {}
+                    busy = false;
+                }
+                scanLoopId = setTimeout(tick, 120);
+            };
+            tick();
         }
 
         function applyContinuousFocus() {
             try {
-                const videoEl = document.querySelector('#reader video');
-                const stream = videoEl && videoEl.srcObject;
-                if (!stream) return;
-                const track = stream.getVideoTracks()[0];
+                const track = scanStream && scanStream.getVideoTracks()[0];
                 if (!track || !track.getCapabilities) return;
                 const caps = track.getCapabilities();
-                const advanced = [];
                 if (caps.focusMode && caps.focusMode.includes('continuous')) {
-                    advanced.push({ focusMode: 'continuous' });
+                    track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {});
                 }
-                if (advanced.length) track.applyConstraints({ advanced }).catch(() => {});
             } catch (e) {}
         }
 
         function stopScanner() {
-            if (!scanner) return;
-            const s = scanner; scanner = null;
-            s.stop().then(() => {
-                s.clear();
-                document.getElementById('btn-scan-start').style.display = 'inline-block';
-                document.getElementById('btn-scan-stop').style.display = 'none';
-            }).catch(() => {});
+            if (scanLoopId) { clearTimeout(scanLoopId); scanLoopId = null; }
+            if (scanStream) {
+                scanStream.getTracks().forEach(t => t.stop());
+                scanStream = null;
+            }
+            if (scanVideo) { scanVideo.srcObject = null; scanVideo = null; }
+            document.getElementById('reader').innerHTML = '';
+            document.getElementById('btn-scan-start').style.display = 'inline-block';
+            document.getElementById('btn-scan-stop').style.display = 'none';
         }
 
         async function onScan(text) {
-            if (lastScan === text) return;
+            // Same code within 3s of last sighting = same scan, not a new one
+            const now = Date.now();
+            if (lastScan === text && now - lastScanAt < 3000) { lastScanAt = now; return; }
             lastScan = text;
+            lastScanAt = now;
             const box = document.getElementById('scan-result');
             const label = document.getElementById('scan-label');
             const content = document.getElementById('scan-content');
+            const openBtn = document.getElementById('btn-scan-open');
             content.innerHTML = '';
+            openBtn.style.display = 'none';
             box.classList.remove('activity');
 
             // Check for activity id
@@ -2847,20 +2932,27 @@
                                ${activity.description ? '<div style="margin-top:4px;opacity:0.7">' + escapeHtml(activity.description) + '</div>' : ''}
                                ${activity.target ? '<div style="margin-top:8px;font-size:11px;opacity:0.5">→ ' + escapeHtml(activity.target) + '</div>' : ''}`;
                 content.appendChild(h);
+                if (activity.target && /^https?:\/\//i.test(activity.target)) {
+                    openBtn.href = activity.target;
+                    openBtn.style.display = 'inline-block';
+                }
                 toast('Activity +1');
             } else {
-                label.textContent = 'Latest scan';
                 const isURL = /^https?:\/\//i.test(text);
+                label.textContent = isURL ? 'Scanned · leads to' : 'Scanned · says';
                 if (isURL) {
                     const a = document.createElement('a');
                     a.href = text; a.textContent = text; a.target = '_blank'; a.rel = 'noopener';
                     content.appendChild(a);
+                    openBtn.href = text;
+                    openBtn.style.display = 'inline-block';
                 } else {
                     content.textContent = text;
                 }
                 toast('Scanned');
             }
             box.classList.add('show');
+            box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             try { if (navigator.vibrate) navigator.vibrate(80); } catch (e) {}
         }
 
