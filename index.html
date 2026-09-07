@@ -1401,7 +1401,7 @@
 
     <div class="main-content">
         <a href="index.html" class="back-link">&larr; BACK</a>
-        <div class="version-badge" title="QR app version">v1.2</div>
+        <div class="version-badge" title="QR app version">v1.3</div>
 
         <h1 class="title"><span>QR</span> <span class="accent">GENERATOR</span></h1>
         <div class="subtitle">Create · Save · Scan · Track</div>
@@ -2945,6 +2945,34 @@
         let scanFrameNo = 0;
         let scanPaused = false;
 
+        function loadScript(src) {
+            return new Promise((resolve) => {
+                const s = document.createElement('script');
+                s.src = src;
+                s.onload = resolve;
+                s.onerror = resolve;
+                document.head.appendChild(s);
+            });
+        }
+
+        // Fetched in the background: scanning starts on jsQR alone and picks
+        // ZXing up as soon as it lands.
+        let zxingPending = null;
+        function loadZXing() {
+            if (window.ZXing || zxingPending) return zxingPending;
+            zxingPending = (async () => {
+                const urls = [
+                    'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js',
+                    'https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js'
+                ];
+                for (const u of urls) {
+                    await loadScript(u);
+                    if (window.ZXing) return;
+                }
+            })();
+            return zxingPending;
+        }
+
         async function ensureDecoder() {
             if (!scanDetector && 'BarcodeDetector' in window) {
                 try {
@@ -2955,6 +2983,7 @@
                     }
                 } catch (e) {}
             }
+            loadZXing();
             if (scanDetector || window.jsQR) return;
             // jsQR script tag failed or was blocked — retry from mirror CDNs
             const mirrors = [
@@ -2962,13 +2991,7 @@
                 'https://unpkg.com/jsqr@1.4.0/dist/jsQR.js'
             ];
             for (const src of mirrors) {
-                await new Promise((resolve) => {
-                    const s = document.createElement('script');
-                    s.src = src;
-                    s.onload = resolve;
-                    s.onerror = resolve;
-                    document.head.appendChild(s);
-                });
+                await loadScript(src);
                 if (window.jsQR) return;
             }
             throw new Error('QR decoder failed to load');
@@ -3084,13 +3107,33 @@
             } catch (e) { return null; }
         }
 
+        // A second engine. ZXing binarizes unevenly-lit frames far better than
+        // jsQR, and its luminance source can be inverted outright — which is what
+        // a light-on-dark printed code needs.
+        function runZXing(data, width, height, inverted) {
+            if (!window.ZXing) return null;
+            try {
+                let src = new ZXing.RGBLuminanceSource(data, width, height);
+                if (inverted) src = src.invert();
+                const bitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(src));
+                const hints = new Map();
+                hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+                const r = new ZXing.QRCodeReader().decode(bitmap, hints);
+                return r ? r.getText() : null;
+            } catch (e) { return null; }
+        }
+
         function decodeImageData(img, tryRaw) {
             if (tryRaw) {
                 const hit = runJsQR(img);
                 if (hit) return hit;
             }
             normalizeContrast(img.data);
-            return runJsQR(img);
+            let hit = runJsQR(img);
+            if (hit) return hit;
+            hit = runZXing(img.data, img.width, img.height, false);
+            if (hit) return hit;
+            return runZXing(img.data, img.width, img.height, true);
         }
 
         // Decode one video frame. Two geometries: the whole frame downscaled
@@ -3111,6 +3154,7 @@
                 sw: side, sh: side, dw: ds, dh: ds
             });
             const tryRaw = scanFrameNo % 3 === 0;
+            if (scanFrameNo % 2) passes.pop();   // crop pass every other frame
             for (const p of passes) {
                 if (canvas.width !== p.dw || canvas.height !== p.dh) {
                     canvas.width = p.dw; canvas.height = p.dh;
@@ -3431,6 +3475,7 @@
         // ---------- Scan from a photo (native camera autofocus beats the preview) ----------
         async function decodeImageFile(file) {
             await ensureDecoder();
+            await loadZXing();
             const bitmap = await loadBitmap(file);
             const w0 = bitmap.width, h0 = bitmap.height;
             const canvas = document.createElement('canvas');
