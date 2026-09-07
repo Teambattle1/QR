@@ -1130,6 +1130,138 @@
             flex-wrap: wrap;
         }
 
+        /* ---- scanner stage: video + framing guide + live overlay ---- */
+        #scanner-stage {
+            position: relative;
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #000;
+            min-height: 180px;
+        }
+        #scanner-stage.idle { min-height: 0; }
+        .scan-frame {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 66%;
+            aspect-ratio: 1 / 1;
+            border: 2px solid rgba(255, 102, 0, 0.55);
+            border-radius: 14px;
+            box-shadow: 0 0 0 2000px rgba(0,0,0,0.18);
+            pointer-events: none;
+            display: none;
+        }
+        #scanner-stage.live .scan-frame { display: block; }
+        .scan-hint {
+            position: absolute;
+            left: 0; right: 0; bottom: 8px;
+            text-align: center;
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.75);
+            text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+            pointer-events: none;
+            display: none;
+        }
+        #scanner-stage.live .scan-hint { display: block; }
+        .cam-tools {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .cam-tools.show { display: flex; }
+        .cam-tools input[type="range"] { flex: 1; accent-color: #ff6600; }
+        .cam-tools .zoom-label {
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.45);
+        }
+
+        /* ---- big result overlay so the hit is visible without scrolling ---- */
+        .scan-hit {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.96);
+            z-index: 10000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .scan-hit.show { display: flex; animation: fade-in 0.25s ease; }
+        .scan-hit-box {
+            max-width: 480px;
+            width: 100%;
+            background: linear-gradient(180deg, rgba(255,102,0,0.08), rgba(0,0,0,0.6));
+            border: 1px solid rgba(255,102,0,0.4);
+            border-radius: 16px;
+            padding: 26px 22px;
+            box-shadow: 0 0 40px rgba(255,102,0,0.25);
+        }
+        .scan-hit-kind {
+            display: inline-block;
+            padding: 5px 14px;
+            background: rgba(255,102,0,0.2);
+            color: #ff9955;
+            font-size: 10px;
+            font-weight: bold;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+        .scan-hit-value {
+            font-size: 17px;
+            line-height: 1.45;
+            word-break: break-word;
+            white-space: pre-wrap;
+            margin-bottom: 14px;
+        }
+        .scan-hit-value a { color: #ff9955; text-decoration: underline; }
+        .scan-hit-rows {
+            margin: 14px 0;
+            font-size: 13px;
+        }
+        .scan-hit-rows .row {
+            display: flex;
+            gap: 10px;
+            padding: 7px 0;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            word-break: break-word;
+        }
+        .scan-hit-rows .row .k {
+            flex: 0 0 90px;
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.45);
+            padding-top: 2px;
+        }
+        .scan-hit-raw {
+            margin-top: 14px;
+            padding: 10px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            font-size: 11px;
+            color: rgba(255,255,255,0.55);
+            word-break: break-all;
+            max-height: 130px;
+            overflow-y: auto;
+        }
+        .scan-hit-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 18px;
+        }
+        .scan-hit-actions .btn { flex: 1 1 auto; text-align: center; }
+
         /* ============ ACTIVITY HIT OVERLAY ============ */
         .activity-hit {
             position: fixed;
@@ -1260,7 +1392,7 @@
 
     <div class="main-content">
         <a href="index.html" class="back-link">&larr; BACK</a>
-        <div class="version-badge" title="QR app version">v1.1</div>
+        <div class="version-badge" title="QR app version">v1.2</div>
 
         <h1 class="title"><span>QR</span> <span class="accent">GENERATOR</span></h1>
         <div class="subtitle">Create · Save · Scan · Track</div>
@@ -1391,19 +1523,46 @@
         <!-- SCANNER -->
         <div class="panel" id="panel-scanner">
             <div id="scanner-box">
-                <div id="reader"></div>
+                <div id="scanner-stage" class="idle">
+                    <div id="reader"></div>
+                    <div class="scan-frame"></div>
+                    <div class="scan-hint">Hold the code inside the frame &middot; tap to focus</div>
+                </div>
+                <div class="cam-tools" id="cam-tools">
+                    <span class="zoom-label">Zoom</span>
+                    <input type="range" id="cam-zoom" min="1" max="5" step="0.1" value="1">
+                    <button class="btn" id="btn-torch" style="display:none;">Light</button>
+                </div>
                 <div class="scanner-controls">
                     <button class="btn primary" id="btn-scan-start">Start scanner</button>
                     <button class="btn" id="btn-scan-stop" style="display:none;">Stop</button>
+                    <button class="btn" id="btn-scan-photo">Scan from photo</button>
+                    <input type="file" id="scan-file" accept="image/*" style="display:none;">
                 </div>
                 <div class="scan-result" id="scan-result">
                     <div class="scan-label" id="scan-label">Latest scan</div>
                     <div id="scan-content"></div>
                     <div class="btn-row" style="margin-top:10px;">
-                        <a class="btn primary" id="btn-scan-open" href="#" target="_blank" rel="noopener" style="display:none;text-decoration:none;">Open link ↗</a>
+                        <a class="btn primary" id="btn-scan-open" href="#" target="_blank" rel="noopener" style="display:none;text-decoration:none;">Open link &#8599;</a>
                         <button class="btn" id="btn-scan-copy">Copy</button>
                         <button class="btn" id="btn-scan-save">Save to archive</button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Big scan result overlay -->
+        <div class="scan-hit" id="scan-hit">
+            <div class="scan-hit-box">
+                <div class="scan-hit-kind" id="scan-hit-kind">Scanned</div>
+                <div class="scan-hit-value" id="scan-hit-value"></div>
+                <div class="scan-hit-rows" id="scan-hit-rows"></div>
+                <div class="scan-hit-raw" id="scan-hit-raw" style="display:none;"></div>
+                <div class="scan-hit-actions">
+                    <a class="btn primary" id="hit-open" href="#" target="_blank" rel="noopener" style="display:none;text-decoration:none;">Open &#8599;</a>
+                    <button class="btn" id="hit-copy">Copy</button>
+                    <button class="btn" id="hit-save">Save to archive</button>
+                    <button class="btn" id="hit-again">Scan again</button>
                 </div>
             </div>
         </div>
@@ -1975,6 +2134,8 @@
                 });
                 if (name === 'saved') renderGallery();
                 if (name !== 'scanner') stopScanner();
+                // Picking the Scanner tab should just start scanning
+                if (name === 'scanner' && !scanStream) startScanner();
             });
         });
 
@@ -2767,9 +2928,12 @@
         // codes on iOS Safari, which decodes the wrong region of the frame).
         let scanStream = null;
         let scanVideo = null;
+        let scanTrack = null;
         let scanLoopId = null;
         let scanDetector = null;
         let lastScanAt = 0;
+        let scanFrameNo = 0;
+        let scanPaused = false;
 
         async function ensureDecoder() {
             if (!scanDetector && 'BarcodeDetector' in window) {
@@ -2804,6 +2968,7 @@
             if (scanStream) return;
             const startBtn = document.getElementById('btn-scan-start');
             const stopBtn = document.getElementById('btn-scan-stop');
+            const stage = document.getElementById('scanner-stage');
             startBtn.disabled = true;
             try {
                 await ensureDecoder();
@@ -2818,24 +2983,39 @@
                 scanVideo.style.cssText = 'width:100%;display:block;border-radius:8px;';
                 reader.appendChild(scanVideo);
 
+                // A sharper frame decodes far better than a big one, so ask for the
+                // highest sensible resolution and let the decoder downscale.
                 try {
                     scanStream = await navigator.mediaDevices.getUserMedia({
                         audio: false,
                         video: {
                             facingMode: { ideal: 'environment' },
-                            width: { ideal: 1280 },
-                            height: { ideal: 720 }
+                            width: { ideal: 1920 },
+                            height: { ideal: 1080 }
                         }
                     });
                 } catch (e) {
-                    scanStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+                    try {
+                        scanStream = await navigator.mediaDevices.getUserMedia({
+                            audio: false,
+                            video: { facingMode: { ideal: 'environment' } }
+                        });
+                    } catch (e2) {
+                        scanStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+                    }
                 }
                 scanVideo.srcObject = scanStream;
                 await scanVideo.play();
+                scanTrack = scanStream.getVideoTracks()[0] || null;
                 applyContinuousFocus();
+                setupCameraTools();
 
+                stage.classList.remove('idle');
+                stage.classList.add('live');
+                scanVideo.addEventListener('click', refocus);
                 startBtn.style.display = 'none';
                 stopBtn.style.display = 'inline-block';
+                scanPaused = false;
                 scanLoop();
             } catch (err) {
                 console.error(err);
@@ -2848,51 +3028,113 @@
             }
         }
 
+        // Decode one video frame. Two passes: the whole frame downscaled (catches
+        // big/close codes) and a centre crop at native resolution (catches small
+        // or distant ones). Inverted codes are only tried every 4th frame — the
+        // extra pass is slow and rarely needed.
+        function decodeFrame(canvas, ctx) {
+            const vw = scanVideo.videoWidth, vh = scanVideo.videoHeight;
+            if (!vw || !vh) return null;
+            scanFrameNo++;
+            const maxSide = 900;
+            const passes = [];
+            const s = Math.min(1, maxSide / Math.max(vw, vh));
+            passes.push({ sx: 0, sy: 0, sw: vw, sh: vh, dw: Math.round(vw * s), dh: Math.round(vh * s) });
+            const side = Math.round(Math.min(vw, vh) * 0.7);
+            const ds = Math.min(side, maxSide);
+            passes.push({
+                sx: Math.round((vw - side) / 2), sy: Math.round((vh - side) / 2),
+                sw: side, sh: side, dw: ds, dh: ds
+            });
+            const inversion = (scanFrameNo % 4 === 0) ? 'attemptBoth' : 'dontInvert';
+            for (const p of passes) {
+                if (canvas.width !== p.dw || canvas.height !== p.dh) {
+                    canvas.width = p.dw; canvas.height = p.dh;
+                }
+                ctx.drawImage(scanVideo, p.sx, p.sy, p.sw, p.sh, 0, 0, p.dw, p.dh);
+                const img = ctx.getImageData(0, 0, p.dw, p.dh);
+                const code = window.jsQR(img.data, p.dw, p.dh, { inversionAttempts: inversion });
+                if (code && code.data) return code.data;
+            }
+            return null;
+        }
+
         function scanLoop() {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d', { willReadFrequently: true });
             let busy = false;
             const tick = async () => {
                 if (!scanStream) return;
-                if (!busy && scanVideo && scanVideo.readyState >= 2) {
+                if (!busy && !scanPaused && scanVideo && scanVideo.readyState >= 2) {
                     busy = true;
                     try {
                         let text = null;
                         if (scanDetector) {
                             const codes = await scanDetector.detect(scanVideo);
                             if (codes && codes.length) text = codes[0].rawValue;
-                        } else {
-                            const vw = scanVideo.videoWidth, vh = scanVideo.videoHeight;
-                            if (vw && vh) {
-                                const scale = Math.min(1, 720 / Math.max(vw, vh));
-                                const w = Math.round(vw * scale), h = Math.round(vh * scale);
-                                if (canvas.width !== w || canvas.height !== h) {
-                                    canvas.width = w; canvas.height = h;
-                                }
-                                ctx.drawImage(scanVideo, 0, 0, w, h);
-                                const img = ctx.getImageData(0, 0, w, h);
-                                const code = window.jsQR(img.data, w, h, { inversionAttempts: 'attemptBoth' });
-                                if (code && code.data) text = code.data;
-                            }
+                        } else if (window.jsQR) {
+                            text = decodeFrame(canvas, ctx);
                         }
                         if (text) onScan(text);
                     } catch (e) {}
                     busy = false;
                 }
-                scanLoopId = setTimeout(tick, 120);
+                scanLoopId = setTimeout(tick, 90);
             };
             tick();
         }
 
         function applyContinuousFocus() {
             try {
-                const track = scanStream && scanStream.getVideoTracks()[0];
-                if (!track || !track.getCapabilities) return;
-                const caps = track.getCapabilities();
+                if (!scanTrack || !scanTrack.getCapabilities) return;
+                const caps = scanTrack.getCapabilities();
                 if (caps.focusMode && caps.focusMode.includes('continuous')) {
-                    track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {});
+                    scanTrack.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {});
                 }
             } catch (e) {}
+        }
+
+        // Tap on the preview: nudge the camera into refocusing (single-shot where
+        // supported, otherwise re-assert continuous focus).
+        function refocus() {
+            try {
+                if (!scanTrack || !scanTrack.getCapabilities) return;
+                const caps = scanTrack.getCapabilities();
+                if (!caps.focusMode) return;
+                if (caps.focusMode.includes('single-shot')) {
+                    scanTrack.applyConstraints({ advanced: [{ focusMode: 'single-shot' }] })
+                        .then(() => setTimeout(applyContinuousFocus, 1200)).catch(() => {});
+                } else {
+                    applyContinuousFocus();
+                }
+            } catch (e) {}
+        }
+
+        function setupCameraTools() {
+            const tools = document.getElementById('cam-tools');
+            const zoom = document.getElementById('cam-zoom');
+            const torch = document.getElementById('btn-torch');
+            tools.classList.remove('show');
+            torch.style.display = 'none';
+            zoom.style.display = 'none';
+            let any = false;
+            try {
+                const caps = scanTrack && scanTrack.getCapabilities ? scanTrack.getCapabilities() : {};
+                if (caps.zoom) {
+                    zoom.min = caps.zoom.min;
+                    zoom.max = caps.zoom.max;
+                    zoom.step = caps.zoom.step || 0.1;
+                    zoom.value = (scanTrack.getSettings && scanTrack.getSettings().zoom) || caps.zoom.min;
+                    zoom.style.display = '';
+                    any = true;
+                }
+                if (caps.torch) {
+                    torch.style.display = '';
+                    torch.dataset.on = '';
+                    any = true;
+                }
+            } catch (e) {}
+            if (any) tools.classList.add('show');
         }
 
         function stopScanner() {
@@ -2901,10 +3143,154 @@
                 scanStream.getTracks().forEach(t => t.stop());
                 scanStream = null;
             }
+            scanTrack = null;
             if (scanVideo) { scanVideo.srcObject = null; scanVideo = null; }
             document.getElementById('reader').innerHTML = '';
+            const stage = document.getElementById('scanner-stage');
+            stage.classList.remove('live');
+            stage.classList.add('idle');
+            document.getElementById('cam-tools').classList.remove('show');
             document.getElementById('btn-scan-start').style.display = 'inline-block';
             document.getElementById('btn-scan-stop').style.display = 'none';
+        }
+
+        // ---------- Understanding an arbitrary QR payload ----------
+        // Returns { kind, value, rows, open } — what to call it, what it says in
+        // plain words, extra details, and a link to open if there is one.
+        function describeQR(raw) {
+            const text = String(raw == null ? '' : raw);
+            const t = text.trim();
+            const rows = [];
+            const kv = (k, v) => { if (v) rows.push([k, v]); };
+
+            if (/^https?:\/\//i.test(t)) {
+                let host = '';
+                try { host = new URL(t).hostname; } catch (e) {}
+                kv('Website', host);
+                return { kind: 'Link', value: t, rows, open: t };
+            }
+            if (/^WIFI:/i.test(t)) {
+                const field = (key) => {
+                    const m = t.match(new RegExp(key + ':((?:\\\\.|[^;])*);', 'i'));
+                    return m ? m[1].replace(/\\(.)/g, '$1') : '';
+                };
+                const ssid = field('S');
+                kv('Network', ssid);
+                kv('Security', field('T') || 'Open');
+                kv('Password', field('P'));
+                return { kind: 'Wi-Fi network', value: ssid || t, rows, open: null };
+            }
+            if (/^BEGIN:VCARD/i.test(t)) {
+                const pick = (re) => { const m = t.match(re); return m ? m[1].trim() : ''; };
+                const name = pick(/(?:^|\n)FN[^:\n]*:(.+)/i);
+                kv('Name', name);
+                kv('Phone', pick(/(?:^|\n)TEL[^:\n]*:(.+)/i));
+                kv('Email', pick(/(?:^|\n)EMAIL[^:\n]*:(.+)/i));
+                kv('Company', pick(/(?:^|\n)ORG[^:\n]*:(.+)/i));
+                return { kind: 'Contact card', value: name || 'Contact', rows, open: null };
+            }
+            if (/^BEGIN:VEVENT/i.test(t) || /^BEGIN:VCALENDAR/i.test(t)) {
+                const pick = (re) => { const m = t.match(re); return m ? m[1].trim() : ''; };
+                const title = pick(/(?:^|\n)SUMMARY[^:\n]*:(.+)/i);
+                kv('Event', title);
+                kv('Starts', pick(/(?:^|\n)DTSTART[^:\n]*:(.+)/i));
+                kv('Where', pick(/(?:^|\n)LOCATION[^:\n]*:(.+)/i));
+                return { kind: 'Calendar event', value: title || 'Event', rows, open: null };
+            }
+            if (/^tel:/i.test(t)) {
+                return { kind: 'Phone number', value: t.slice(4), rows, open: t };
+            }
+            if (/^(mailto:)/i.test(t)) {
+                return { kind: 'Email', value: t.slice(7), rows, open: t };
+            }
+            if (/^(smsto:|sms:)/i.test(t)) {
+                const body = t.replace(/^(smsto:|sms:)/i, '').split(':');
+                kv('To', body[0]);
+                kv('Message', body.slice(1).join(':'));
+                return { kind: 'Text message', value: body[0] || t, rows, open: t };
+            }
+            if (/^geo:/i.test(t)) {
+                const c = t.slice(4).split('?')[0];
+                kv('Coordinates', c);
+                const parts = c.split(',');
+                const maps = parts.length >= 2
+                    ? 'https://www.google.com/maps?q=' + encodeURIComponent(parts[0] + ',' + parts[1])
+                    : null;
+                return { kind: 'Location', value: c, rows, open: maps };
+            }
+            if (/^otpauth:/i.test(t)) {
+                return { kind: 'Two-factor key', value: 'One-time-password setup code', rows, open: null };
+            }
+            if (/^bitcoin:|^ethereum:|^upi:/i.test(t)) {
+                return { kind: 'Payment', value: t, rows, open: null };
+            }
+            const scheme = t.match(/^([a-z][a-z0-9+.-]{1,20}):\/\//i);
+            if (scheme) {
+                kv('Type', scheme[1].toLowerCase());
+                return { kind: 'Link', value: t, rows, open: null };
+            }
+            if (/^\d[\d\s-]{2,}$/.test(t)) {
+                return { kind: 'Number', value: t, rows, open: null };
+            }
+            return { kind: 'Text', value: text, rows, open: null };
+        }
+
+        // ---------- Result overlay ----------
+        const scanHit = document.getElementById('scan-hit');
+
+        function showScanHit(opts) {
+            const kindEl = document.getElementById('scan-hit-kind');
+            const valEl = document.getElementById('scan-hit-value');
+            const rowsEl = document.getElementById('scan-hit-rows');
+            const rawEl = document.getElementById('scan-hit-raw');
+            const openBtn = document.getElementById('hit-open');
+
+            kindEl.textContent = opts.kind;
+            valEl.textContent = '';
+            if (opts.open && /^https?:\/\//i.test(opts.open) && opts.value === opts.open) {
+                const a = document.createElement('a');
+                a.href = opts.open; a.textContent = opts.value;
+                a.target = '_blank'; a.rel = 'noopener';
+                valEl.appendChild(a);
+            } else {
+                valEl.textContent = opts.value;
+            }
+
+            rowsEl.innerHTML = '';
+            (opts.rows || []).forEach(([k, v]) => {
+                const row = document.createElement('div');
+                row.className = 'row';
+                const kEl = document.createElement('div');
+                kEl.className = 'k'; kEl.textContent = k;
+                const vEl = document.createElement('div');
+                vEl.textContent = v;
+                row.appendChild(kEl); row.appendChild(vEl);
+                rowsEl.appendChild(row);
+            });
+
+            if (opts.raw && opts.raw !== opts.value) {
+                rawEl.textContent = opts.raw;
+                rawEl.style.display = '';
+            } else {
+                rawEl.style.display = 'none';
+            }
+
+            if (opts.open) {
+                openBtn.href = opts.open;
+                openBtn.textContent = opts.openLabel || 'Open ↗';
+                openBtn.style.display = 'inline-block';
+            } else {
+                openBtn.style.display = 'none';
+            }
+
+            scanPaused = true;
+            scanHit.classList.add('show');
+        }
+
+        function closeScanHit() {
+            scanHit.classList.remove('show');
+            scanPaused = false;
+            lastScanAt = Date.now();
         }
 
         async function onScan(text) {
@@ -2932,12 +3318,24 @@
                                ${activity.description ? '<div style="margin-top:4px;opacity:0.7">' + escapeHtml(activity.description) + '</div>' : ''}
                                ${activity.target ? '<div style="margin-top:8px;font-size:11px;opacity:0.5">→ ' + escapeHtml(activity.target) + '</div>' : ''}`;
                 content.appendChild(h);
+                const rows = [];
+                if (activity.description) rows.push(['About', activity.description]);
+                if (activity.target) rows.push(['Leads to', activity.target]);
+                rows.push(['Scans', String(activity.scanCount)]);
+                let open = null;
                 if (activity.target && /^https?:\/\//i.test(activity.target)) {
-                    openBtn.href = activity.target;
+                    open = activity.target;
+                    openBtn.href = open;
                     openBtn.style.display = 'inline-block';
                 }
+                showScanHit({
+                    kind: 'Activity scanned',
+                    value: activity.name || 'Activity',
+                    rows, open, raw: text
+                });
                 toast('Activity +1');
             } else {
+                const info = describeQR(text);
                 const isURL = /^https?:\/\//i.test(text);
                 label.textContent = isURL ? 'Scanned · leads to' : 'Scanned · says';
                 if (isURL) {
@@ -2949,23 +3347,126 @@
                 } else {
                     content.textContent = text;
                 }
+                showScanHit({
+                    kind: info.kind,
+                    value: info.value,
+                    rows: info.rows,
+                    open: info.open,
+                    raw: text
+                });
                 toast('Scanned');
             }
             box.classList.add('show');
-            box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             try { if (navigator.vibrate) navigator.vibrate(80); } catch (e) {}
+        }
+
+        // ---------- Scan from a photo (native camera autofocus beats the preview) ----------
+        async function decodeImageFile(file) {
+            await ensureDecoder();
+            const bitmap = await loadBitmap(file);
+            const w0 = bitmap.width, h0 = bitmap.height;
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+            const attempts = [];
+            [1600, 1000, 640].forEach(max => {
+                const s = Math.min(1, max / Math.max(w0, h0));
+                attempts.push({ sx: 0, sy: 0, sw: w0, sh: h0, dw: Math.round(w0 * s), dh: Math.round(h0 * s) });
+            });
+            const side = Math.round(Math.min(w0, h0) * 0.7);
+            const ds = Math.min(side, 1200);
+            attempts.push({
+                sx: Math.round((w0 - side) / 2), sy: Math.round((h0 - side) / 2),
+                sw: side, sh: side, dw: ds, dh: ds
+            });
+
+            for (const a of attempts) {
+                canvas.width = a.dw; canvas.height = a.dh;
+                ctx.drawImage(bitmap, a.sx, a.sy, a.sw, a.sh, 0, 0, a.dw, a.dh);
+                if (scanDetector) {
+                    try {
+                        const codes = await scanDetector.detect(canvas);
+                        if (codes && codes.length) return codes[0].rawValue;
+                    } catch (e) {}
+                }
+                if (window.jsQR) {
+                    const img = ctx.getImageData(0, 0, a.dw, a.dh);
+                    const code = window.jsQR(img.data, a.dw, a.dh, { inversionAttempts: 'attemptBoth' });
+                    if (code && code.data) return code.data;
+                }
+            }
+            return null;
+        }
+
+        function loadBitmap(file) {
+            if (window.createImageBitmap) {
+                return createImageBitmap(file).catch(() => loadViaImage(file));
+            }
+            return loadViaImage(file);
+        }
+
+        function loadViaImage(file) {
+            return new Promise((resolve, reject) => {
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+                img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image load failed')); };
+                img.src = url;
+            });
         }
 
         document.getElementById('btn-scan-start').addEventListener('click', startScanner);
         document.getElementById('btn-scan-stop').addEventListener('click', stopScanner);
 
-        document.getElementById('btn-scan-copy').addEventListener('click', () => {
+        document.getElementById('btn-scan-photo').addEventListener('click', () => {
+            document.getElementById('scan-file').click();
+        });
+        document.getElementById('scan-file').addEventListener('change', async (e) => {
+            const file = e.target.files && e.target.files[0];
+            e.target.value = '';
+            if (!file) return;
+            toast('Reading photo…');
+            try {
+                const text = await decodeImageFile(file);
+                if (text) {
+                    lastScan = null; // a photo is always a fresh result
+                    onScan(text);
+                } else {
+                    toast('No QR code found in that photo');
+                }
+            } catch (err) {
+                console.error(err);
+                toast('Could not read that image');
+            }
+        });
+
+        document.getElementById('cam-zoom').addEventListener('input', (e) => {
+            if (!scanTrack) return;
+            scanTrack.applyConstraints({ advanced: [{ zoom: Number(e.target.value) }] }).catch(() => {});
+        });
+        document.getElementById('btn-torch').addEventListener('click', (e) => {
+            if (!scanTrack) return;
+            const on = e.currentTarget.dataset.on !== 'on';
+            scanTrack.applyConstraints({ advanced: [{ torch: on }] })
+                .then(() => { e.currentTarget.dataset.on = on ? 'on' : ''; e.currentTarget.classList.toggle('primary', on); })
+                .catch(() => toast('Light not available'));
+        });
+
+        document.getElementById('hit-again').addEventListener('click', () => {
+            closeScanHit();
+            if (!scanStream) startScanner();
+        });
+        scanHit.addEventListener('click', (e) => { if (e.target === scanHit) closeScanHit(); });
+        document.getElementById('hit-copy').addEventListener('click', () => copyLastScan());
+        document.getElementById('hit-save').addEventListener('click', () => { closeScanHit(); saveLastScan(); });
+
+        function copyLastScan() {
             if (!lastScan) return;
             navigator.clipboard.writeText(lastScan).then(
                 () => toast('Copied'), () => toast('Copy failed'));
-        });
+        }
 
-        document.getElementById('btn-scan-save').addEventListener('click', () => {
+        function saveLastScan() {
             if (!lastScan) return;
             form.dataset.mode = 'simple';
             document.querySelectorAll('.type-toggle button').forEach(b =>
@@ -2975,7 +3476,10 @@
             editingId = null;
             document.querySelector('.tab[data-tab="generator"]').click();
             if (generate()) setTimeout(saveCurrent, 50);
-        });
+        }
+
+        document.getElementById('btn-scan-copy').addEventListener('click', copyLastScan);
+        document.getElementById('btn-scan-save').addEventListener('click', saveLastScan);
 
         document.addEventListener('visibilitychange', () => { if (document.hidden) stopScanner(); });
         window.addEventListener('beforeunload', stopScanner);
