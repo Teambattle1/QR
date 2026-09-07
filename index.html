@@ -1174,6 +1174,15 @@
         }
         .cam-tools.show { display: flex; }
         .cam-tools input[type="range"] { flex: 1; accent-color: #ff6600; }
+        .scan-status {
+            margin-top: 10px;
+            text-align: center;
+            font-size: 11px;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.45);
+            min-height: 15px;
+            line-height: 1.4;
+        }
         .cam-tools .zoom-label {
             font-size: 10px;
             letter-spacing: 2px;
@@ -1528,6 +1537,7 @@
                     <div class="scan-frame"></div>
                     <div class="scan-hint">Hold the code inside the frame &middot; tap to focus</div>
                 </div>
+                <div class="scan-status" id="scan-status"></div>
                 <div class="cam-tools" id="cam-tools">
                     <span class="zoom-label">Zoom</span>
                     <input type="range" id="cam-zoom" min="1" max="5" step="0.1" value="1">
@@ -2964,6 +2974,12 @@
             throw new Error('QR decoder failed to load');
         }
 
+        let scanHintTimer = null;
+        function setScanStatus(msg) {
+            const el = document.getElementById('scan-status');
+            if (el) el.textContent = msg || '';
+        }
+
         async function startScanner() {
             if (scanStream) return;
             const startBtn = document.getElementById('btn-scan-start');
@@ -3016,6 +3032,11 @@
                 startBtn.style.display = 'none';
                 stopBtn.style.display = 'inline-block';
                 scanPaused = false;
+                setScanStatus('Searching for a code…');
+                if (scanHintTimer) clearTimeout(scanHintTimer);
+                scanHintTimer = setTimeout(() => {
+                    setScanStatus('Still nothing? Tap the picture to focus, or use “Scan from photo”.');
+                }, 9000);
                 scanLoop();
             } catch (err) {
                 console.error(err);
@@ -3028,15 +3049,58 @@
             }
         }
 
-        // Decode one video frame. Two passes: the whole frame downscaled (catches
-        // big/close codes) and a centre crop at native resolution (catches small
-        // or distant ones). Inverted codes are only tried every 4th frame — the
-        // extra pass is slow and rarely needed.
+        // Coloured cards (a white code printed on orange, for instance) do not
+        // binarize reliably in jsQR — the raw frame simply never decodes. A
+        // contrast-stretched greyscale copy decodes every colour combination we
+        // tested, so every frame gets that treatment.
+        function normalizeContrast(data) {
+            const n = data.length / 4;
+            const hist = new Uint32Array(256);
+            const lum = new Uint8ClampedArray(n);
+            for (let i = 0, j = 0; j < n; i += 4, j++) {
+                const g = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) | 0;
+                lum[j] = g; hist[g]++;
+            }
+            // 2nd/98th percentile, so a glare spot or a dark edge cannot flatten it
+            const clip = Math.max(1, Math.round(n * 0.02));
+            let lo = 0, hi = 255, acc = 0;
+            for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc > clip) { lo = v; break; } }
+            acc = 0;
+            for (let v = 255; v >= 0; v--) { acc += hist[v]; if (acc > clip) { hi = v; break; } }
+            const range = Math.max(1, hi - lo);
+            for (let i = 0, j = 0; j < n; i += 4, j++) {
+                let v = ((lum[j] - lo) * 255 / range) | 0;
+                v = v < 0 ? 0 : (v > 255 ? 255 : v);
+                data[i] = data[i + 1] = data[i + 2] = v; data[i + 3] = 255;
+            }
+        }
+
+        // jsQR throws on inversionAttempts:'onlyInvert' (library bug), so only
+        // 'dontInvert' and 'attemptBoth' are ever used.
+        function runJsQR(img) {
+            try {
+                const r = window.jsQR(img.data, img.width, img.height, { inversionAttempts: 'attemptBoth' });
+                return r && r.data ? r.data : null;
+            } catch (e) { return null; }
+        }
+
+        function decodeImageData(img, tryRaw) {
+            if (tryRaw) {
+                const hit = runJsQR(img);
+                if (hit) return hit;
+            }
+            normalizeContrast(img.data);
+            return runJsQR(img);
+        }
+
+        // Decode one video frame. Two geometries: the whole frame downscaled
+        // (catches big/close codes) and a centre crop at native resolution
+        // (catches small or distant ones).
         function decodeFrame(canvas, ctx) {
             const vw = scanVideo.videoWidth, vh = scanVideo.videoHeight;
             if (!vw || !vh) return null;
             scanFrameNo++;
-            const maxSide = 900;
+            const maxSide = 800;
             const passes = [];
             const s = Math.min(1, maxSide / Math.max(vw, vh));
             passes.push({ sx: 0, sy: 0, sw: vw, sh: vh, dw: Math.round(vw * s), dh: Math.round(vh * s) });
@@ -3046,15 +3110,14 @@
                 sx: Math.round((vw - side) / 2), sy: Math.round((vh - side) / 2),
                 sw: side, sh: side, dw: ds, dh: ds
             });
-            const inversion = (scanFrameNo % 4 === 0) ? 'attemptBoth' : 'dontInvert';
+            const tryRaw = scanFrameNo % 3 === 0;
             for (const p of passes) {
                 if (canvas.width !== p.dw || canvas.height !== p.dh) {
                     canvas.width = p.dw; canvas.height = p.dh;
                 }
                 ctx.drawImage(scanVideo, p.sx, p.sy, p.sw, p.sh, 0, 0, p.dw, p.dh);
-                const img = ctx.getImageData(0, 0, p.dw, p.dh);
-                const code = window.jsQR(img.data, p.dw, p.dh, { inversionAttempts: inversion });
-                if (code && code.data) return code.data;
+                const hit = decodeImageData(ctx.getImageData(0, 0, p.dw, p.dh), tryRaw);
+                if (hit) return hit;
             }
             return null;
         }
@@ -3139,6 +3202,8 @@
 
         function stopScanner() {
             if (scanLoopId) { clearTimeout(scanLoopId); scanLoopId = null; }
+            if (scanHintTimer) { clearTimeout(scanHintTimer); scanHintTimer = null; }
+            setScanStatus('');
             if (scanStream) {
                 scanStream.getTracks().forEach(t => t.stop());
                 scanStream = null;
@@ -3290,6 +3355,7 @@
         function closeScanHit() {
             scanHit.classList.remove('show');
             scanPaused = false;
+            if (scanStream) setScanStatus('Searching for a code…');
             lastScanAt = Date.now();
         }
 
@@ -3299,6 +3365,8 @@
             if (lastScan === text && now - lastScanAt < 3000) { lastScanAt = now; return; }
             lastScan = text;
             lastScanAt = now;
+            if (scanHintTimer) { clearTimeout(scanHintTimer); scanHintTimer = null; }
+            setScanStatus('');
             const box = document.getElementById('scan-result');
             const label = document.getElementById('scan-label');
             const content = document.getElementById('scan-content');
@@ -3390,9 +3458,8 @@
                     } catch (e) {}
                 }
                 if (window.jsQR) {
-                    const img = ctx.getImageData(0, 0, a.dw, a.dh);
-                    const code = window.jsQR(img.data, a.dw, a.dh, { inversionAttempts: 'attemptBoth' });
-                    if (code && code.data) return code.data;
+                    const hit = decodeImageData(ctx.getImageData(0, 0, a.dw, a.dh), true);
+                    if (hit) return hit;
                 }
             }
             return null;
