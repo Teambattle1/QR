@@ -60,3 +60,16 @@ svar, og en kort ikke-teknisk opsummering til sidst. Alt andet er støj.
   completed as each fix lands — so the user can always see current status.
 - When the user adds new requests mid-session, add them to the list
   immediately; never leave the list stale.
+
+## Admin-login (kode tjekkes på serveren)
+
+- Den lille «Admin»-knap (lås-ikon) sidder øverst til højre under versionsmærket på computer og nederst til højre på telefon. Den åbner en kode-dialog; koden sendes til den fælles edge function `ef-verify-code` på Supabase MAIN — **ingen kode står i klienten**. Admin = svaret `type: 'admin'` (master-koden) eller `type: 'user_sites'` med rolle `admin`/`ef_admin`.
+- 5 forkerte forsøg → 60 sek. pause. Sessionen ligger i `localStorage` `qr_admin_session` = `{ name, expiresAt }` i 12 timer; «Admin · Log ud» rydder den.
+- Al koden ligger i `checklist/checklist-config.js`. Loginet gater KUN Checklist mode — den eksisterende «Admin»-fane (backup/forklaring) er stadig åben for alle.
+
+## Checklist mode
+
+- Admin-lag til at pege på fejl → skærmbillede → dagens pakke → `/checklist dd/mm-A` i Claude Code (`.claude/skills/checklist/SKILL.md`). App-nøgle **`qr`** (Supabase MAIN `cm_packages`/`cm_items`).
+- Kontakten: log ind som admin → knappen «Checklist mode» ved siden af «Admin · Log ud». `?checklist=1` virker også (kun som admin).
+- Filer: `checklist/checklist-config.js` (vores opsætning: admin-gate, skærm-register `SCREENS` — nøglen er `/` + aktiv fanes `data-tab`), `checklist/checklist-loader.js` + `checklist/checklist-mode.js` = kopier af Checklist-kittets udgave uden React (`teambattle-workspace/checklist-kit/vanilla/dist/`). **Ret aldrig de to kopier her** — ret i kittet og kopiér ud igen. Den store fil hentes kun for en admin med laget tændt.
+- Ny fane i `index.html` = én række i `SCREENS`.
