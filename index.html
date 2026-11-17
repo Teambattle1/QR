@@ -3705,6 +3705,8 @@
         if (window.EventdaySso) {
             const recheckLogin = window.EventdaySso.requireLogin(startStaff, {
                 isPublic: () => (document.querySelector('.tab.active')?.dataset.tab || 'generator') === 'generator',
+                backLabel: '← Tilbage til generatoren',
+                onBack: () => document.querySelector('.tab[data-tab="generator"]').click(),
             });
             document.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => recheckLogin && recheckLogin()));
         } else startStaff();

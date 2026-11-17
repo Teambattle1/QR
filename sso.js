@@ -132,6 +132,7 @@
   ].join('\n');
 
   var gate = null;
+  var gateOpts = {};
   var attempts = 0;
   var lockedUntil = 0;
 
@@ -159,6 +160,16 @@
       input.value = v;
       if (v.length === CODE_LENGTH) submit(v, input);
     });
+    // Valgfri «tilbage»-knap (fx QR: tilbage til den åbne generator)
+    if (gateOpts.backLabel && gateOpts.onBack) {
+      var back = document.createElement('button');
+      back.type = 'button';
+      back.className = 'esso-btn ghost';
+      back.setAttribute('data-act', 'back');
+      back.textContent = gateOpts.backLabel;
+      back.onclick = function () { gateOpts.onBack(); };
+      gate.querySelector('.esso-card').appendChild(back);
+    }
     document.body.appendChild(gate);
   }
 
@@ -210,6 +221,7 @@
   function requireLogin(onReady, opts) {
     var ready = false;
     var isPublic = (opts && opts.isPublic) || function () { return false; };
+    gateOpts = opts || {};
     function check() {
       var ok = !!getToken();
       if (!ok && isPublic()) {
