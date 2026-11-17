@@ -3701,7 +3701,13 @@
                 renderGallery();
             }
         };
-        if (window.EventdaySso) window.EventdaySso.requireLogin(startStaff); else startStaff();
+        // Generator-fanen er åben for alle (laver kun en QR-kode lokalt); Arkiv/Scanner/Admin kræver login.
+        if (window.EventdaySso) {
+            const recheckLogin = window.EventdaySso.requireLogin(startStaff, {
+                isPublic: () => (document.querySelector('.tab.active')?.dataset.tab || 'generator') === 'generator',
+            });
+            document.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => recheckLogin && recheckLogin()));
+        } else startStaff();
     })();
     </script>
     <!-- Checklist mode + admin-login (kilden er Checklist-kittet; se CLAUDE.md) -->

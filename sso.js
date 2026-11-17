@@ -205,10 +205,17 @@
   }
 
   // Viser login-skærmen indtil der er et brugbart token; kalder onReady én gang ved login.
-  function requireLogin(onReady) {
+  // opts.isPublic(): true = siden der vises lige nu er offentlig (fx QR-generatoren) → ingen login-skærm.
+  // Returnerer check(), så appen kan tjekke igen, når brugeren skifter fane.
+  function requireLogin(onReady, opts) {
     var ready = false;
+    var isPublic = (opts && opts.isPublic) || function () { return false; };
     function check() {
       var ok = !!getToken();
+      if (!ok && isPublic()) {
+        if (gate) gate.style.display = 'none';
+        return;
+      }
       if (ok) {
         if (gate) gate.style.display = 'none';
         if (!ready) { ready = true; if (onReady) onReady(); }
@@ -220,6 +227,7 @@
     }
     function start() { check(); onChange(check); }
     if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+    return check;
   }
 
   window.EventdaySso = {
