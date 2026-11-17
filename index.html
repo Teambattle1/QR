@@ -14,6 +14,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <!-- Platform-SSO: staff-token på databasekald + login-skærm til selve appen (se sso.js) -->
+    <script src="sso.js" data-app="qr" data-app-name="QR" data-extra-keys="qr_admin_session"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -1747,7 +1749,11 @@
         let sb = null;
         try {
             if (window.supabase && window.supabase.createClient) {
-                sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false } });
+                // Staff-kald får SSO-tokenet med (x-eventday-sso); uden login virker kun de offentlige RPC'er
+                sb = window.supabase.createClient(SB_URL, SB_KEY, {
+                    auth: { persistSession: false },
+                    global: { fetch: window.EventdaySso ? window.EventdaySso.fetchWithSso : undefined }
+                });
             }
         } catch (e) { console.warn('Supabase init failed', e); }
 
@@ -1821,6 +1827,20 @@
                     sections: (sections.data || []).map(s => s.name)
                 };
             } catch (e) { console.warn('remotePull error', e); return null; }
+        }
+
+        // Public lookup for a scanned activity QR: exact id only, no listing (RPC works without login)
+        async function remoteResolveActivity(id) {
+            if (!sb || !id) return null;
+            try {
+                const { data, error } = await sb.rpc('qr_resolve_activity', { p_id: id });
+                if (error || !data) return null;
+                return {
+                    id: data.id, type: 'activity', name: data.name || '',
+                    description: data.description || '', target: data.target || '',
+                    scanCount: data.scan_count || 0, scans: []
+                };
+            } catch (e) { console.warn('remoteResolveActivity', e); return null; }
         }
 
         async function remoteUpsert(entry) {
@@ -3603,14 +3623,10 @@
             if (!id) return;
             const to = params.get('to');
 
-            // Resolve activity (local cache, then Supabase) to find target if ?to= missing
+            // Resolve activity (local cache, then the public lookup RPC) to find target if ?to= missing
             let activity = loadArchive().find(x => x.id === id && x.type === 'activity');
-            if (!activity && sb) {
-                try {
-                    const { data } = await sb.from('qr_codes').select('*').eq('id', id).eq('type', 'activity').maybeSingle();
-                    if (data) activity = rowToEntry(data);
-                } catch (e) {}
-            }
+            const cached = !!activity;
+            if (!activity) activity = await remoteResolveActivity(id);
 
             const targetValue = (to && /^https?:\/\//i.test(to)) ? to
                 : (activity && activity.target) ? activity.target : null;
@@ -3618,7 +3634,13 @@
 
             // Log the scan (always). Await so the counter is recorded before we leave the page.
             if (activity) {
-                try { await logActivityScan(id, 'url'); } catch (e) {}
+                try {
+                    if (cached) await logActivityScan(id, 'url');
+                    else {
+                        const n = await remoteScan(id, 'url');
+                        activity.scanCount = n != null ? n : (activity.scanCount || 0) + 1;
+                    }
+                } catch (e) {}
             }
 
             // URL target → redirect immediately. No intro, no OK button.
@@ -3665,8 +3687,10 @@
         updateBadge();
         handleActivityVisit();
 
-        // Pull from Supabase and replace local cache (remote is authoritative)
-        (async () => {
+        // Pull from Supabase and replace local cache (remote is authoritative).
+        // Kun for logget-ind staff: efter RLS-lockdown kræver tabellerne SSO-token.
+        // Offentlige besøg (?a=…) klarer sig med RPC'erne ovenfor; login-skærmen ligger under aktivitets-visningen.
+        const startStaff = async () => {
             const pulled = await remotePull();
             if (!pulled) return;
             saveArchive(pulled.codes);
@@ -3676,7 +3700,8 @@
             if (document.querySelector('.tab.active')?.dataset.tab === 'saved') {
                 renderGallery();
             }
-        })();
+        };
+        if (window.EventdaySso) window.EventdaySso.requireLogin(startStaff); else startStaff();
     })();
     </script>
     <!-- Checklist mode + admin-login (kilden er Checklist-kittet; se CLAUDE.md) -->

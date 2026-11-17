@@ -9,8 +9,9 @@
  * ef-verify-code på Supabase MAIN — ingen kode står i klienten. Admin =
  * svaret type 'admin' (master-koden) eller type 'user_sites' med rolle
  * admin/ef_admin. 5 forkerte forsøg → 60 sek. pause. Sessionen ligger i
- * localStorage 'qr_admin_session' = { name, expiresAt } i 12 timer; «Log ud»
- * rydder den, og laget slukker selv, når den er væk eller udløbet.
+ * localStorage 'qr_admin_session' = { name, token, expiresAt } i 12 timer; «Log ud»
+ * rydder den, og laget slukker selv, når den er væk eller udløbet. `token` er
+ * sessionToken fra ef-verify-code — sso.js sender det som x-eventday-sso (RLS-lockdown).
  *
  * Login gater KUN Checklist mode — appens åbne «Admin»-fane er uændret.
  * Ny fane i appen = én række i SCREENS (nøglen er '/' + fanens data-tab).
@@ -33,8 +34,8 @@
     } catch (e) { /* privat fane / blokeret lager */ }
     return null;
   }
-  function writeSession(name) {
-    try { localStorage.setItem(SESSION_KEY, JSON.stringify({ name: name || 'Admin', expiresAt: Date.now() + SESSION_MS })); } catch (e) {}
+  function writeSession(name, token) {
+    try { localStorage.setItem(SESSION_KEY, JSON.stringify({ name: name || 'Admin', token: token || '', expiresAt: Date.now() + SESSION_MS })); } catch (e) {}
   }
   function clearSession() {
     try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
@@ -122,7 +123,12 @@
       var cm = el('button', { type: 'button', class: 'qr-admin-btn on', 'data-testid': 'qr-checklist' }, CHECK_SVG + '<span>Checklist mode</span>');
       cm.onclick = function () { if (window.ChecklistKit) window.ChecklistKit.openPanel(); };
       var out = el('button', { type: 'button', class: 'qr-admin-btn', 'data-testid': 'qr-admin-logout', title: 'Logget ind som ' + s.name }, LOCK_SVG + '<span>Admin · Log ud</span>');
-      out.onclick = function () { clearSession(); renderBar(); };
+      out.onclick = function () {
+        clearSession();
+        // «Log ud» logger også ud af appens staff-login (sso.js), så tabellerne lukker igen
+        if (window.EventdaySso) window.EventdaySso.logout();
+        renderBar();
+      };
       bar.appendChild(cm);
       bar.appendChild(out);
     } else {
@@ -187,7 +193,7 @@
         var name = adminNameFrom(data);
         if (name) {
           attempts = 0;
-          writeSession(name);
+          writeSession(name, data.sessionToken);
           closeDialog();
           renderBar();
           return;
