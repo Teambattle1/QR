@@ -73,3 +73,9 @@ svar, og en kort ikke-teknisk opsummering til sidst. Alt andet er støj.
 - Kontakten: log ind som admin → knappen «Checklist mode» ved siden af «Admin · Log ud». `?checklist=1` virker også (kun som admin).
 - Filer: `checklist/checklist-config.js` (vores opsætning: admin-gate, skærm-register `SCREENS` — nøglen er `/` + aktiv fanes `data-tab`), `checklist/checklist-loader.js` + `checklist/checklist-mode.js` = kopier af Checklist-kittets udgave uden React (`teambattle-workspace/checklist-kit/vanilla/dist/`). **Ret aldrig de to kopier her** — ret i kittet og kopiér ud igen. Den store fil hentes kun for en admin med laget tændt.
 - Ny fane i `index.html` = én række i `SCREENS`.
+
+## RLS-lockdown på MAIN (2026-11-17, branch `security-rls`)
+
+- Appen (Generator/Archive/Scanner/Admin) er et staff-værktøj: `sso.js` sender platform-SSO-tokenet som `x-eventday-sso` på alle REST-kald og viser en login-skærm (4-cifret kode via `ef-verify-code` eller cookien `eventday_sso` fra app.eventday.dk). Admin-loginet i `checklist-config.js` gemmer også tokenet.
+- Det offentlige scan-flow `?a=<id>` bruger kun RPC'erne `qr_resolve_activity` (opslag på præcist id) og `qr_log_scan` (tæl, insert-only med loft).
+- SQL: `supabase/migrations/20261117190000_qr_rpcs.sql` (del 1 før deploy, LOCK-blokken efter). GAMES' `qrcode.html` bruger samme RPC'er og tabeller.
