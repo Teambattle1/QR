@@ -67,6 +67,8 @@
     routeKey: routeKey,
     screens: SCREENS,
     get version() { return appVersion(); },
+    // Staff-token til cm_* (RLS): sso.js' token, hvis siden har det; ellers finder kittet selv .eventday.dk-cookien.
+    ssoToken: function () { return window.EventdaySso ? window.EventdaySso.getToken() : ''; },
   };
 
   // ── Login mod serveren ─────────────────────────────────────────────
