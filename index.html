@@ -3617,11 +3617,26 @@
         window.addEventListener('beforeunload', stopScanner);
 
         // ---------- Activity URL handler (?a=... ) ----------
+        // ?to= kommer fra URL'en og kan sættes af hvem som helst — kun egne domæner
+        // accepteres, ellers bliver qr.eventday.dk en åben redirect (phishing).
+        const ALLOWED_REDIRECT_DOMAINS = ['eventday.dk', 'teambattle.dk'];
+        function safeRedirectParam(raw) {
+            if (!raw) return null;
+            let url;
+            try { url = new URL(raw, location.origin); } catch (e) { return null; }
+            const isRelative = raw.startsWith('/') && !raw.startsWith('//') && !raw.startsWith('/\\');
+            if (isRelative && url.origin === location.origin) return url.href;
+            if (url.protocol !== 'https:' || url.username || url.password) return null;
+            const host = url.hostname.toLowerCase();
+            const ok = ALLOWED_REDIRECT_DOMAINS.some(d => host === d || host.endsWith('.' + d));
+            return ok ? url.href : null;
+        }
+
         async function handleActivityVisit() {
             const params = new URLSearchParams(location.search);
             const id = params.get('a');
             if (!id) return;
-            const to = params.get('to');
+            const to = safeRedirectParam(params.get('to'));
 
             // Resolve activity (local cache, then the public lookup RPC) to find target if ?to= missing
             let activity = loadArchive().find(x => x.id === id && x.type === 'activity');
